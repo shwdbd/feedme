@@ -1,0 +1,134 @@
+{% extends "/base.html" %}
+
+{% block body %}
+<div class="layui-card">
+    <div class="layui-card-body">
+      <table class="layui-table" lay-skin="line">
+          <colgroup>
+            <col width="50">
+            <col width="200">
+            <col>
+          </colgroup>
+          <tbody>
+            <tr>
+              <td>申请单编号</td>
+              <td>{{ form.form_id }}</td>
+            </tr>
+            <tr>
+                <td>状态</td>
+                <td>{{ form.status }}</td>
+            </tr>
+            <tr>
+                <td>申请人</td>
+                <td>{{ form.applicant_name }}</td>
+            </tr>
+            <tr>
+                <td>申请时间</td>
+                <td>{{ form.applicant_time }}</td>
+            </tr>
+            <tr>
+              <td>审批人</td>
+              <td>{{ form.leader_name }}</td>
+          </tr>
+          <tr>
+              <td>审批时间</td>
+              <td>{{ form.approval_time }}</td>
+          </tr>
+          <tr>
+              <td>审批意见</td>
+              <td>{{ form.approval_note }}</td>
+          </tr>
+          </tbody>
+      </table>
+  </div>
+</div>
+
+<div class="layui-card">
+    <div class="layui-card-body">
+        <form class="layui-form" id="b" action="/admin/dept_index" method="POST">
+            <div class="layui-inline">
+                <button type="button" id="addBtn" class="layui-btn">
+                    <i class="layui-icon layui-icon-add-1"></i>
+                    添加条目
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="layui-card">
+    <div class="layui-card-body">    
+        <div id="data_table" lay-filter="lay_data_table">
+        </div>
+    </div>
+</div>
+
+{# 行按钮 #}
+<script type="text/html" id="rowBar">
+    <button class="layui-btn layui-btn-danger layui-btn-sm" lay-event="delete">
+        <i class="layui-icon layui-icon-delete"></i>
+    </button>
+</script>
+
+<script>
+    layui.use(['table', 'jquery'], function(){
+        var table = layui.table;
+        tableResult = table.render({
+            elem: '#data_table'
+            ,title: ""
+            ,url: '/ftmis/belongs/item_query/{{ form.form_id }}' //数据接口
+            ,page: false         // 无须分页
+            ,loading: true      // 现实加载条
+            ,cols: [[ //表头
+                {field: 'id', title: 'ID', hide: true, sort: true, fixed: 'left'}
+                ,{field: 'bizno', title: '编号', width:'12%', sort: true, fixed: 'left'}
+                ,{field: 'cust_name', title: '户名', width:'35%', sort: true, fixed: 'left'}
+                ,{field: 'belong_str', title: '归属情况', width:"30%", minWidth: 80}
+                ,{field: '', title: '操作', toolbar: "#rowBar"}
+            ]]
+        });
+
+        table.on('tool(lay_data_table)', function(obj){
+            var layEvent = obj.event
+            switch(obj.event) {
+                case 'delete':
+                    var delIndex = layer.confirm('删除后不能撤销，确认要删除么？', function(delIndex) {
+                        $.ajax({
+                            url: '/ftmis/belongs/item_delete/' + obj.data["id"],
+                            type: "post",
+                            success: function(suc) {
+                                if (suc.code == 200) {
+                                    obj.del(); //删除对应行（tr）的DOM结构，并更新缓存
+                                    layer.close(delIndex);
+                                    layer.msg("删除成功", { icon: 1});
+                                } else {
+                                    layer.msg("删除失败, " + suc.message, { icon: 5});
+                                }
+                            }
+                        });
+                    layer.close(delIndex);
+                    });
+                    break;
+            }
+        });
+
+    });
+
+    $=layui.jquery;
+    // 新增条目按钮
+    $(document).on('click','#addBtn',function(){
+        var index = layer.open({
+            type: 2,
+            title: "业务归属",
+            area: ['80%', '80%'],
+            fix: false,
+            maxmin: true,
+            shadeClose: true,
+            shade: 0.4,
+            skin: 'layui-layer-rim',
+            content: ["/ftmis/belongs/item_add/{{ form.form_id }}", "no"],
+        });
+    });
+</script>
+
+{% endblock %}

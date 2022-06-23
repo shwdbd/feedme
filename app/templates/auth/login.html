@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <title>login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='layui/css/layui.css') }}">
+    <style>
+        body{
+            background-image: url("{{ url_for('static', filename='images/loginbg.png') }}");
+            background-position: center center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+        }
+        .loginForm{
+            width: 350px;
+            height: 340px;
+            background-color: white;
+            padding: 30px 20px;
+            margin-top: 50%;
+            border-radius: 5px;
+            box-shadow: 0 0 5px black;
+            box-sizing: border-box;
+        }
+        .alert {
+            position: relative;
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+            color: #004085;
+            background-color: #cce5ff;
+            border-color: #b8daff;
+        }
+    </style>
+</head>
+<body>
+    <div class="layui-container">
+        <div class="layui-row">
+            <div class="layui-col-md4 layui-col-md-offset4">
+                <div class="loginForm">
+                    <h1 align="center">FeedMe</h1>
+                     
+                    <form class="layui-form" action="/auth/login" method="POST">
+                        <div class="layui-form-item">
+                            <label>用户:</label>
+                            <div class="layui-form-block">
+                                <input type="text" name="username" required lay-verify="required" placeholder="请输入用户名" class="layui-input" value="admin">
+                            </div>    
+                        </div>
+                        <div class="layui-form-item">
+                            <label>密码:</label>
+                            <div class="layui-form-block">
+                                <input type="password" name="password" required lay-verify="required" placeholder="请输入密码" class="layui-input" value="12345">
+                            </div>
+                        </div>
+                        <div class="layui-form-item">
+                            {% for message in get_flashed_messages() %}
+                            <div class="layui-form-block">
+                                <div class="alert">{{ message }}</div>
+                            </div> 
+                            {% endfor %}
+                        </div>
+                        <div class="layui-form-item">
+                            <div class="layui-form-block">
+                                <button class="layui-btn" lay-submit lay-filter="loginForm">登录</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/jquery/3.4.1/jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='layui/layui.js') }}"></script>
+    <script>
+        layui.use(['layer', 'form'], function () {
+            var layer = layui.layer;
+            var form = layui.form;
+
+            // 进行登录操作
+            form.on('submit(loginForm)', function (data) {
+                data = data.field;
+                if (data.username == '') {
+                    layer.msg('用户名不能为空');
+                    return false;
+                }
+                if (data.password == '') {
+                    layer.msg('密码不能为空');
+                    return false;
+                }
+
+                return true;
+            });
+        })
+    </script>
+</body>
+</html>

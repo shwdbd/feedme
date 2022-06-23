@@ -1,0 +1,81 @@
+{% include '/header.html' %}
+
+<div class="layui-card">
+    <div class="layui-card-body">
+        <form class="layui-form" id="addform" name="addform" lay-filter="formConfig" method="post" action="" enctype="multipart/form-data">
+            <div class="layui-form-item">
+                <label class="layui-form-label">账号</label>
+                <div class="layui-input-block">
+                    <input type="text" name="id" required  lay-verify="required" placeholder="请输入编号" autocomplete="off" class="layui-input" >
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">姓名</label>
+                <div class="layui-input-block">
+                    <input type="text" name="name" required  lay-verify="required" placeholder="请输入部门名称" autocomplete="off" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">初始密码</label>
+                <div class="layui-input-block">
+                    <input type="password" name="password" required  lay-verify="required" autocomplete="off" class="layui-input">
+                </div>
+                <label class="layui-form-label">请再输一次</label>
+                <div class="layui-input-block">
+                    <input type="password" name="password" required  lay-verify="required" autocomplete="off" class="layui-input">
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <label class="layui-form-label">所属部门</label>
+                <div class="layui-input-block">
+                    <select name="dept" lay-verify="" lay-search>
+                        <option value="">请选择一个部门</option>
+                        <option value="01">公司部</option>
+                        <option value="02">营业部</option>
+                    </select>
+                </div>
+            </div>
+            <div class="layui-form-item">
+                <div class="layui-input-block">
+                    <button class="layui-btn layui-btn-normal" lay-submit lay-filter="submitBtn">
+                        <i class="layui-icon layui-icon-ok"></i>
+                        提交
+                    </button>
+                    <button type="reset" id="resetBtn" class="layui-btn layui-btn-primary">
+                        重置
+                    </button>  
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    layui.use(['form', 'jquery', 'layer'], function(){
+        var form = layui.form;
+        var $ = layui.jquery;
+        var layer = layui.layer;
+
+        lock = true
+        form.on('submit(submitBtn)', function(data){
+            if (lock == true) {
+                field = data.field
+                // var index = parent.layer.getFrameIndex(window.name); //先得到当前iframe层的索引           
+                $.post('/admin/user/add', field, function (ret) {
+                    if (ret.code != 200) {  //添加失败
+                        layer.msg(ret.message, {icon: 5})
+                    } else { //添加成功
+                        layer.msg(ret.message, {icon: 6}, function () {
+                            // parent.layui.table.reload('data_table'); //重载表格
+                            // parent.layer.close(index); //再执行关闭模态窗口
+                        })
+                    }
+                })
+                lock = false
+            }
+            return false; //阻止表单跳转。如果需要表单跳转，去掉这段即可。
+        });
+    });
+</script>
+
+{% include '/footer.html' %}

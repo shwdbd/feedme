@@ -253,8 +253,3 @@ class BaostockGateWay:
 #     # print(isinstance(r, pd.core.frame.DataFrame))
 #     # # print(r.info())
 #     # # print(r.to_dict('records'))
-
-if __name__ == "__main__":
-    print(tl.get_p())
-
-

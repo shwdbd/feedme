@@ -1,0 +1,29 @@
+<script src="{{ url_for('static', filename='/js/left_menu.js') }}"></script>
+<div class="layui-side layui-bg-green">
+    <div class="layui-side-scroll">
+        <!-- 左侧导航区域（可配合layui已有的垂直导航） -->
+        <ul class="layui-nav layui-nav-tree" lay-filter="left-menu" id="left-menu">
+            <!-- HTML内容填充 -->
+        </ul>
+    </div>
+</div>
+
+<script>
+  layui.use(['jquery'], function(){
+      var $ = layui.jquery;
+  
+      $(function () {
+          $.ajax( {
+              url : '/auth/menu_data',
+              type : 'post',
+              dataType : 'json',
+              success : function(data) {
+                  menu_data = data.data
+                  var html = ""
+                  html += get_menu_html(menu_data)
+                  $("#left-menu").html(html);
+              }
+          })
+      });
+  });
+</script>

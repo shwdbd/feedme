@@ -1,0 +1,29 @@
+{% include '/header.html' %}
+
+<div class="layui-card">
+    <div class="layui-card-body">
+      <table class="layui-table" lay-skin="line">
+          <colgroup>
+            <col width="50">
+            <col width="200">
+            <col>
+          </colgroup>
+          <tbody>
+            <tr>
+              <td>账号</td>
+              <td>{{ user.id }}</td>
+            </tr>
+            <tr>
+              <td>姓名</td>
+              <td>{{ user.name }}</td>
+            </tr>
+            <tr>
+                <td>隶属部门</td>
+                <td>{{ user.get_dept_name() }}</td>
+              </tr>
+          </tbody>
+      </table>
+  </div>
+</div>
+
+{% include '/footer.html' %}

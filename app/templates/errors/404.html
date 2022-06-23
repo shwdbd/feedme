@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>404 Error</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='layui/css/layui.css') }}">
+  <script src="{{ url_for('static', filename='layui/layui.js') }}"></script>
+</head>
+<body>
+<div class="layui-container">
+    <div class="layui-card"></div>
+        <blockquote class="layui-elem-quote">404 页面已溜走</blockquote>
+        <h4>Error: {{errorcode}}</h4>
+	      <p class="content-font">{{errormsg}}</p>
+    </div>
+</div>
+
+</body>
+</html>
