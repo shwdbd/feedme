@@ -25,7 +25,7 @@ import tushare as ts
 import time
 import json
 import baostock as bs
-# import pandas as pd
+import pandas as pd
 
 
 class TushareGateWay:
@@ -109,6 +109,7 @@ class TushareGateWay:
 
 
 class BaostockGateWay:
+    """ Baostock 数据网关 """
 
     # 系统返回值
     RES_SUCCESS = "0"     # 成功
@@ -160,6 +161,12 @@ class BaostockGateWay:
 
     def call(self, callback, return_type="dataframe", *args, **kargs):
         """调用baostock api
+
+        调用示例：
+        df = gw.call(callback=bs.query_history_k_data_plus, code='sh.600016'
+                , fields=BaostockGateWay.FIELDS_DAY, start_date='2017-07-01', end_date='2017-07-31'
+                , frequency=BaostockGateWay.FRQ_DAY, adjustflag="3")
+
 
         要实现的功能：
         - 每次调用，日志记录
@@ -253,3 +260,18 @@ class BaostockGateWay:
 #     # print(isinstance(r, pd.core.frame.DataFrame))
 #     # # print(r.info())
 #     # # print(r.to_dict('records'))
+
+if __name__ == "__main__":
+    gw = BaostockGateWay()
+    res = gw.connect()
+    print(res)
+    # # 访问日线数据
+    # df = gw.call(callback=bs.query_history_k_data_plus, code='sh.600016', fields=BaostockGateWay.FIELDS_DAY
+    #              , start_date='2017-07-01', end_date='2017-07-31',
+    #             frequency=BaostockGateWay.FRQ_DAY, adjustflag="3")
+    # print(df)
+
+    # 访问全部 query_stock_basic
+    df = gw.call(callback=bs.query_stock_basic)
+    print(df)
+    print(df.shape[0])

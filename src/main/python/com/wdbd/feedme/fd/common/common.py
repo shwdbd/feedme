@@ -20,6 +20,8 @@ import configparser
 # import pymongo
 import datetime
 import os
+import sqlite3
+
 
 # TODO 为生产、测试配置不同配置文件
 TEST_MODE = False
@@ -79,6 +81,88 @@ def get_mongo_cfg(key):
 #     return get_mgconn().get_database(dbname)
 
 
+def conn_sqlite3():
+    """ 连接本地数据库 """
+    return sqlite3.connect(get_cfg(section="cmbcft", key="db.path"))
+
+
+def dict_factory(cursor, row):
+    """ sqlite3 按dict格式返回 """
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
+
+class SQLiteDb:
+    """SQlite3数据库访问上下文
+    """
+
+    def __init__(self):
+        self.db_path = get_cfg(section="sqlite3", key="db.path")
+        self.conn = sqlite3.connect(self.db_path)       # TODO 如果连接不上，则报错
+        self.conn.row_factory = dict_factory
+        self.cur = self.conn.cursor()
+
+    def __str__(self):
+        return "sqlite数据库上下文管理器，数据库位置：" + self.db_path
+
+    def __enter__(self):
+        # 返回类对象本身
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cur.close()
+        self.conn.close()
+        # print("连接已关闭")
+
+    def _log_sql(self, sql):
+        """ 记录SQL语句 """
+        get_logger().debug("SQL:" + str(sql))
+
+    # 查询单条数据
+    def query_one(self, sql):
+        """ 查询单条 """
+        try:
+            self._log_sql(sql)
+            self.cur.execute(sql)
+            res = self.cur.fetchone()
+            return res
+        except Exception as e:
+            get_logger().error("ERR SQL : " + str(e))
+            return None
+
+    def query(self, sql):
+        """ 查询全部 """
+        try:
+            self._log_sql(sql)
+            self.cur.execute(sql)
+            res = self.cur.fetchall()
+            return res
+        except Exception as e:
+            get_logger().error("ERR SQL : " + str(e))
+            return None
+
+    def execute(self, sqls):
+        """ 执行SQL语句() """
+        if type(sqls) is str:
+            sql_list = [sqls]
+        else:
+            sql_list = sqls
+
+        try:
+            for sql_str in sql_list:
+                self._log_sql(sql_str)
+                self.cur.execute(sql_str)
+            self.conn.commit()
+            self._log_sql("事务提交")
+        except Exception as err:
+            self._log_sql("ERR SQL = " + str(err))
+            print('Something went wrong: ', str(err))
+            self.conn.rollback()
+            self._log_sql("事务已回滚")
+
+
 # =============================================
 # 日志
 # 使用方式：log.info('xxxx')
@@ -117,6 +201,7 @@ def now():
 
 
 def get_p():
+    """ 临时，取得当前的路径 """
     print(os.getcwd())
     print("realpath = " + os.path.realpath(__file__))
     return print("\\".join(os.path.abspath(__file__).split("\\")[:-1]))
