@@ -83,7 +83,8 @@ class CnStockDailyK:
                     count_data = 0
                     df = gw.call(callback=bs.query_history_k_data_plus, code=code,
                                  fields=BaostockGateWay.FIELDS_DAY, frequency=BaostockGateWay.FRQ_DAY, adjustflag="3")
-                    # TODO 加入数据清洗，针对 n/a 的部分进行补充, fill_na
+                    # 数据清洗
+                    df.fillna(0, inplace=True)
 
                     sql_list.append(
                         "delete from ods_baostock_cnstock_k_d where code='{code}'".format(code=code))
@@ -108,12 +109,12 @@ class CnStockDailyK:
 
 
 if __name__ == "__main__":
-    # 股票清单
-    unit = SecurityListUnit()
-    res = unit.download_all(start_date="20220101")
-    print(res)
-
-    # # 股票日K线
-    # unit = CnStockDailyK()
+    # # 股票清单
+    # unit = SecurityListUnit()
     # res = unit.download_all(start_date="20220101")
     # print(res)
+
+    # 股票日K线
+    unit = CnStockDailyK()
+    res = unit.download_all(start_date="20220101")
+    print(res)

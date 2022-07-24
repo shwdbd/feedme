@@ -2,6 +2,7 @@ from flask import Flask, redirect, url_for
 from flask_login import login_required
 from .views import auth_view, admin_view
 from app.views.ft_mis import belongs_view
+from app.views.demo import file_upload
 from .extensions import init_flask_login
 from flask_sqlalchemy import SQLAlchemy
 from .extensions import init_plugs
@@ -28,6 +29,8 @@ def create_app(test_config=None):
     app.register_blueprint(auth_view.bp)
     app.register_blueprint(admin_view.bp)
     app.register_blueprint(belongs_view.bp)
+    # 示例用bp
+    app.register_blueprint(file_upload.bp)
 
     # 全局views
     @app.route('/hello')

@@ -26,6 +26,7 @@ import time
 import json
 import baostock as bs
 import pandas as pd
+import efinance as ef
 
 
 class TushareGateWay:
@@ -242,6 +243,65 @@ class BaostockGateWay:
         return date_ts_formatter[:4] + "-" + date_ts_formatter[4:6] + "-" + date_ts_formatter[-2:]
 
 
+class EFinanceGateWay:
+    
+    # 股票K线字段：
+    # 股票名称    股票代码          日期       开盘       收盘       最高       最低       成交量           成交额    振幅   涨跌幅    涨跌额    换手率
+    
+    # def test(self):
+    #     # 股票代码
+    #     stock_code = '600519'
+    #     # 开始日期
+    #     beg = '20210101'
+    #     # 结束日期
+    #     end = '20210708'
+    #     df = ef.stock.get_quote_history(stock_code, beg=beg, end=end)
+    #     print(df)
+
+    def call(self, callback, *args, **kargs):
+        """调用baostock api
+
+        调用示例：
+        df = gw.call(callback=bs.get_quote_history, stock_codes='600519', beg=beg, end=end)
+
+
+        要实现的功能：
+        - 每次调用，日志记录
+        - 统一抛出异常
+
+        Args:
+            callback (function): ef调用接口
+
+        Returns:
+            [type]: 查询后返回数据
+        """
+        logger = tl.get_logger()
+
+        try:
+            df = callback(*args, **kargs)
+            if df is None:
+                logger.error("调用efinance失败，传入参数：{0}".format(kargs))
+                return None
+
+            return df
+        except Exception as err:
+            logger.debug(
+                "【efinance错误】调用出现异常，错误原因:{err}".format(err=str(err)))
+            return None
+
+
+if __name__ == "__main__":
+    gw = EFinanceGateWay()
+    # 股票代码
+    stock_code = '600519'
+    # 开始日期
+    beg = '20210101'
+    # 结束日期
+    end = '20210708'
+    df = gw.call(callback=ef.stock.get_quote_history, stock_codes=stock_code, beg=beg, end=end)
+    print(df)
+    ef.stock.get_realtime_quotes
+
 # if __name__ == "__main__":
 #     gw = TushareGateWay()
 #     # r = gw.call(gw.api.daily, start_date="20180101", end_date="20210401", return_type="dict")
@@ -261,17 +321,17 @@ class BaostockGateWay:
 #     # # print(r.info())
 #     # # print(r.to_dict('records'))
 
-if __name__ == "__main__":
-    gw = BaostockGateWay()
-    res = gw.connect()
-    print(res)
-    # # 访问日线数据
-    # df = gw.call(callback=bs.query_history_k_data_plus, code='sh.600016', fields=BaostockGateWay.FIELDS_DAY
-    #              , start_date='2017-07-01', end_date='2017-07-31',
-    #             frequency=BaostockGateWay.FRQ_DAY, adjustflag="3")
-    # print(df)
+# if __name__ == "__main__":
+#     gw = BaostockGateWay()
+#     res = gw.connect()
+#     print(res)
+#     # # 访问日线数据
+#     # df = gw.call(callback=bs.query_history_k_data_plus, code='sh.600016', fields=BaostockGateWay.FIELDS_DAY
+#     #              , start_date='2017-07-01', end_date='2017-07-31',
+#     #             frequency=BaostockGateWay.FRQ_DAY, adjustflag="3")
+#     # print(df)
 
-    # 访问全部 query_stock_basic
-    df = gw.call(callback=bs.query_stock_basic)
-    print(df)
-    print(df.shape[0])
+#     # 访问全部 query_stock_basic
+#     df = gw.call(callback=bs.query_stock_basic)
+#     print(df)
+#     print(df.shape[0])
