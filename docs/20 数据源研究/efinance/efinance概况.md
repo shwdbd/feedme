@@ -29,6 +29,34 @@
 
 - 网络要求：代理模式下无法使用，不能用翻墙工具
 
+## API 清单
+
+股票部分：
+
+| api                         | 参数                                                         | 说明                                                         |
+| --------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| get_history_bill            | stock_code                                                   | 获取单只股票历史单子流入流出数据                             |
+| get_today_bill              | stock_code                                                   | 获取单只股票最新交易日的日内分钟级单子流入流出数据           |
+| get_latest_quote            | stock_codes: Union[str, List[str]]                           | 获取沪深市场多只股票的实时涨幅情况                           |
+| get_quote_history           | stock_codes: Union[str, List[str]], beg: str = '19000101', end: str = '20500101',klt: int = 101, fqt: int = 1, | 获取股票的 K 线数据                                          |
+| get_realtime_quotes         | fs : Union[str, List[str]], optional 市场代码                | 获取单个或者多个市场行情的最新状况                           |
+| get_top10_stock_holder_info |                                                              | 获取沪深市场指定股票前十大股东信息                           |
+| get_base_info               | stock_codes: Union[str, List[str]]                           | 股票代码或股票代码构成的列表                                 |
+| get_all_report_dates        |                                                              | 获取沪深市场的全部股票报告期信息                             |
+| get_all_company_performance | date                                                         | 获取沪深市场股票某一季度的表现情况                           |
+| get_latest_holder_number    | date                                                         | 获取沪深A股市场最新公开的股东数目变化情况 也可获取指定报告期的股东数目变化情况 |
+| get_daily_billboard         | start_date, end_date                                         | 获取指定日期区间的龙虎榜详情数据                             |
+| get_members                 | index_code                                                   | 获取指数成分股信息                                           |
+| get_latest_ipo_info         |                                                              | 获取企业 IPO 审核状态                                        |
+| get_quote_snapshot          | stock_code                                                   | 获取沪深市场股票最新行情快照                                 |
+| get_deal_detail             | stock_code, max_count                                        | 获取股票最新交易日成交明细                                   |
+| get_belong_board            | stock_code                                                   | 获取股票所属板块                                             |
+
+
+
+
+
+
 ## API使用示例
 
 ### A股K线

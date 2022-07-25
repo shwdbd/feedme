@@ -244,10 +244,11 @@ class BaostockGateWay:
 
 
 class EFinanceGateWay:
-    
+    """ efinance 网关 """
+
     # 股票K线字段：
     # 股票名称    股票代码          日期       开盘       收盘       最高       最低       成交量           成交额    振幅   涨跌幅    涨跌额    换手率
-    
+
     # def test(self):
     #     # 股票代码
     #     stock_code = '600519'
@@ -292,15 +293,23 @@ class EFinanceGateWay:
 
 if __name__ == "__main__":
     gw = EFinanceGateWay()
+
+    # # 股票日K线
+    # # 股票代码
+    # stock_code = '600519'
+    # # 开始日期
+    # beg = '20210101'
+    # # 结束日期
+    # end = '20210708'
+    # df = gw.call(callback=ef.stock.get_quote_history, stock_codes=stock_code, beg=beg, end=end)
+    # print(df)
+    # # ef.stock.get_realtime_quotes
+
     # 股票代码
-    stock_code = '600519'
-    # 开始日期
-    beg = '20210101'
-    # 结束日期
-    end = '20210708'
-    df = gw.call(callback=ef.stock.get_quote_history, stock_codes=stock_code, beg=beg, end=end)
+    # df = gw.call(callback=ef.stock.get_realtime_quotes, fs=['可转债'])
+    # print(df[["股票代码", '股票名称', '市场类型']])
+    df = gw.call(callback=ef.stock.get_base_info, stock_codes=['600016'])
     print(df)
-    ef.stock.get_realtime_quotes
 
 # if __name__ == "__main__":
 #     gw = TushareGateWay()
