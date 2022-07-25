@@ -76,9 +76,11 @@ class CnStockDailyK:
                 sql = "select stock_id from ods_efinance_cnstock_list"
                 rs = db.query(sql)
 
+                # 取得全部股票数量
+                count_stock = db.query_one("select count(*) as count_all from ods_efinance_cnstock_list")['count_all']
+
                 idx_stock = 0
                 for record in rs:
-                    # print(row["code"])
                     sql_list = []
                     code = record["stock_id"]
                     count_data = 0
@@ -100,7 +102,7 @@ class CnStockDailyK:
                         count_data += 1
                     db.execute(sql_list)
                     idx_stock += 1
-                    log.info("{0} : {1} {2}".format(idx_stock, code, count_data))
+                    log.info("{0}/{1} : {2} {3}".format(idx_stock, count_stock, code, count_data))
             return True
         except Exception as err:
             print(sql)

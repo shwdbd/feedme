@@ -9,7 +9,8 @@
 @Desc    :   FD模块的命令行接口程序
 '''
 import click
-from com.wdbd.feedme.fd.ds_baostock.bs_stock import SecurityListUnit, CnStockDailyK
+from com.wdbd.feedme.fd.ds_baostock.bs_stock import SecurityListUnit as bs_SecurityListUnit, CnStockDailyK as bs_CnStockDailyK
+from com.wdbd.feedme.fd.ds_efinance.ef_stock import SecurityListUnit as ef_SecurityListUnit, CnStockDailyK as ef_CnStockDailyK
 
 
 @click.command()
@@ -34,7 +35,7 @@ def dd(source: str, from_date: str, to_date: str = None, data: str = None, recov
     elif source.lower() == 'baostock' or source.lower() == 'bs':
         if not data:
             # 默认下载资产清单
-            srv = SecurityListUnit()
+            srv = bs_SecurityListUnit()
             res = srv.download_all()
             if res:
                 click.echo('下载成功')
@@ -43,12 +44,12 @@ def dd(source: str, from_date: str, to_date: str = None, data: str = None, recov
             return
         elif data.lower() == 'dk' or data.lower() == 'dk':
             # 日线数据
-            unit = CnStockDailyK()
+            unit = bs_CnStockDailyK()
             res = unit.download_all()
             return
         elif data.lower() == 'stock-list' or data.lower() == 'sl':
             # 股票和资产清单
-            srv = SecurityListUnit()
+            srv = ef_SecurityListUnit()
             res = srv.download_all()
             if res:
                 click.echo('下载成功')
@@ -59,19 +60,21 @@ def dd(source: str, from_date: str, to_date: str = None, data: str = None, recov
             click.echo('请显示指定需要下载哪像baostock数据（data参数）')
             return
     elif source.lower() == 'efinance' or source.lower() == 'ef':
-        # click.echo('下载 efinance ')
-        # TODO 待实现
         if not data:
-            # TODO 存量数据下载
-            pass
+            # 存量数据下载
+            unit = ef_SecurityListUnit()
+            res = unit.download_all()
+            return
         elif data.lower() == 'dk' or data.lower() == 'dk':
             # 日线数据
-            # TODO 存量数据下载
-            pass
+            unit = ef_CnStockDailyK()
+            res = unit.download_all()
+            return
         elif data.lower() == 'stock-list' or data.lower() == 'sl':
             # 股票清单
-            # TODO 存量数据下载
-            pass
+            unit = ef_SecurityListUnit()
+            res = unit.download_all()
+            return
         else:
             click.echo('请显示指定需要下载哪像baostock数据 (data参数) ')
             return

@@ -116,5 +116,5 @@ if __name__ == "__main__":
 
     # 股票日K线
     unit = CnStockDailyK()
-    res = unit.download_all(start_date="20220101")
+    res = unit.download_all()
     print(res)
