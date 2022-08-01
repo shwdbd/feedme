@@ -164,7 +164,7 @@ class SQLiteDb:
             self._log_sql("事务提交")
         except Exception as err:
             self._log_err_sql(sqls)
-            self._log_sql("SQL错误 = " + str(err))
+            get_logger().error("SQL错误 = " + str(err))
             self.conn.rollback()
             self._log_sql("事务已回滚")
 
@@ -179,11 +179,13 @@ class SQLiteDb:
             self.cur.executemany(sql_str, data)
             self.conn.commit()
             self._log_sql("事务提交")
+            return True
         except Exception as err:
             self._log_err_sql(sql_str)
-            self._log_sql("SQL错误 = " + str(err))
+            get_logger().error("SQL错误 = " + str(err))
             self.conn.rollback()
             self._log_sql("事务已回滚")
+            return False
 
 
 # =============================================

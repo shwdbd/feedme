@@ -13,7 +13,7 @@ import baostock as bs
 from com.wdbd.feedme.fd.common.common import SQLiteDb as SQLiteDb
 import com.wdbd.feedme.fd.common.common as tl
 import datetime
-import pandas as pd
+# import pandas as pd
 
 
 class SecurityListUnit:
@@ -62,14 +62,15 @@ class CnStockDailyK:
         log = tl.get_logger()
         log.info("【Baostock】开始下载 A股日K线 数据")
         sql = ""
+        gw = BaostockGateWay()
 
         try:
             with SQLiteDb() as db:
                 # 取得全部的股票代码清单
                 if replace:
-                    sql = "select code from ods_baostock_stock_basic where type_id=1"
+                    sql = "select code from ods_baostock_stock_basic where type_id=1 limit 5"
                 else:
-                    sql = "select code from ods_baostock_stock_basic where type_id=1 and code not in (select distinct code from ods_baostock_cnstock_k_d)"
+                    sql = "select code from ods_baostock_stock_basic where type_id=1 and code not in (select distinct code from ods_baostock_cnstock_k_d) limit 5"
                 rs = db.query(sql)
                 log.info("需要下载股票{0}支".format(len(rs)))
 
@@ -79,64 +80,46 @@ class CnStockDailyK:
                 # print(stock_code_list)
 
                 bs.login()
-                sql_list = []
                 for idx_stock, stock_code in enumerate(stock_code_list, 1):
                     rs = bs.query_history_k_data_plus(code=stock_code, fields=BaostockGateWay.FIELDS_DAY, frequency=BaostockGateWay.FRQ_DAY, adjustflag="3")
-                    data_list = []
+
                     if rs.error_code == BaostockGateWay.RES_SUCCESS:
-                        # TODO 将返回值变为dataframe的过程，可以抽象
-                        while rs.next():
-                            data_list.append(rs.get_row_data())
-                        res_df = pd.DataFrame(data_list, columns=rs.fields)
-                        # print(res_df.shape[0])
+                        res_df = gw.rs_2_dataframe(rs)
 
                         if res_df is not None and res_df.shape[0] > 0:
-                            count_data = 0
-                            sql_list.append(
-                                "delete from ods_baostock_cnstock_k_d where code='{code}'".format(code=stock_code))
-                            for index, row in res_df.iterrows():
-                                sql = "insert into ods_baostock_cnstock_k_d "
-                                sql += " (trade_date, code, open, high, low, close, preclose, volume, amount, adjustflag, turn, tradestatus, pctChg, isST) "
-                                sql += " values "
-                                sql += " ('{trade_date}', '{code}', {open}, {high}, {low}, {close}, {preclose}, '{volume}', '{amount}', '{adjustflag}', '{turn}', '{tradestatus}', '{pctChg}', '{isST}') ".format(
-                                    trade_date=row['date'], code=row['code'], open=row['open'], high=row['high'], low=row['low'], close=row['close'], preclose=row['preclose'], volume=row['volume'],
-                                    amount=row['amount'], adjustflag=row['adjustflag'], turn=row['turn'], tradestatus=row['tradestatus'], pctChg=row['pctChg'], isST=row['isST'])
-                                # print(sql)
-                                sql_list.append(sql)
-                                count_data += 1
-                            
-                            idx_stock += 1
-                            log.info("{0} : {1} {2}".format(idx_stock, stock_code, count_data))
-                            
-                            if (idx_stock % 50) == 1:
-                                print(len(sql_list))
-                                db.execute(sql_list)
-                                sql_list = []
-                            
+                            # data clear
+                            df = res_df[["date", "code", "open", "high", "low", "close", "preclose", "volume", "amount", "adjustflag", "turn", "tradestatus", "pctChg", "isST"]]
+                            # delete
+                            db.execute("delete from ods_baostock_cnstock_k_d where code='{code}'".format(code=stock_code))
+                            # insert data
+                            sql = "insert into ods_baostock_cnstock_k_d "
+                            sql += " (trade_date, code, open, high, low, close, preclose, volume, amount, adjustflag, turn, tradestatus, pctChg, isST) "
+                            sql += " values "
+                            sql += " (?,?,?,?,?,?,?,?,?,?,?,?,?,?) "
+                            db.execute_many(sql, df.to_records(index=False))
+
+                            log.info("{0} : {1} {2}".format(idx_stock, stock_code, res_df.shape[0]))
                         else:
                             log.info("{0} : {1} is empty".format(idx_stock, stock_code))
-
-                # TODO 可以设置一个参数，批量进行提交
-                print(len(sql_list))
-                db.execute(sql_list)
-                # FIXME 使用executemany优化
-                
                 bs.logout()
+
+                # 回显插入的股票数量
+                count_stock = db.query_one("select count(distinct code) as count_all from ods_baostock_cnstock_k_d")["count_all"]
+                log.info("共下载{0}支股票日K线数据".format(count_stock))
 
             return True
         except Exception as err:
-            print(sql)
-            log.info("Baostock下载证券清单失败，错误原因 : {err}".format(err=err))
+            log.error("Baostock下载证券清单失败, 错误原因 : {err}".format(err=err))
             return False
 
 
 if __name__ == "__main__":
-    # 股票清单
-    unit = SecurityListUnit()
-    res = unit.download_all(start_date=None)
-    print(res)
-
-    # # 股票日K线
-    # unit = CnStockDailyK()
-    # res = unit.download_all(replace=False)
+    # # 股票清单
+    # unit = SecurityListUnit()
+    # res = unit.download_all(start_date=None)
     # print(res)
+
+    # 股票日K线
+    unit = CnStockDailyK()
+    res = unit.download_all(replace=False)
+    print(res)

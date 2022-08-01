@@ -216,6 +216,17 @@ class BaostockGateWay:
         finally:
             bs.logout()
 
+    def rs_2_dataframe(self, bs_rs) -> pd.DataFrame:
+        """ 将baostock返回值转成pd.DataFrame格式 """
+        if bs_rs is None:
+            return None
+        data_list = []
+        while bs_rs.next():
+            data_list.append(bs_rs.get_row_data())
+        res_df = pd.DataFrame(data_list, columns=bs_rs.fields)
+        # print(res_df.shape[0])
+        return res_df
+
     def code_bs2ts(self, bs_code: str) -> str:
         # 错误格式，返回None
         # sh.600001 => 600001.SH

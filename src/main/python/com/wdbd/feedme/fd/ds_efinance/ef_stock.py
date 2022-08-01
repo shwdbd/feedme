@@ -63,50 +63,48 @@ class CnStockDailyK:
             gw = EFinanceGateWay()
             with SQLiteDb() as db:
                 # 取得全部的股票代码清单
-                sql = "select stock_id from ods_efinance_cnstock_list"
+                sql = "select stock_id from ods_efinance_cnstock_list limit 2"
                 rs = db.query(sql)
 
                 # 取得全部股票数量
                 count_stock = db.query_one("select count(*) as count_all from ods_efinance_cnstock_list")['count_all']
 
-                idx_stock = 0
-                for record in rs:
-                    sql_list = []
+                for idx_stock, record in enumerate(rs, 1):
                     code = record["stock_id"]
-                    count_data = 0
                     df = gw.call(callback=ef.stock.get_quote_history, stock_codes=code)
                     # 数据清洗
                     df.fillna(0, inplace=True)
 
-                    sql_list.append(
-                        "delete from ods_efinance_cnstock_k_d where stock_id='{code}'".format(code=code))
-                    for index, row in df.iterrows():
-                        sql = "insert into ods_efinance_cnstock_k_d "
-                        sql += " (stock_name, stock_id, trade_date, open, high, low, close, volume, amount, amp, pctChg, amtChg, turn) "
-                        sql += " values "
-                        sql += " ('{stock_name}','{stock_id}','{trade_date}', {open}, {high}, {low}, {close}, '{volume}', '{amount}', '{amp}', '{pctChg}', '{amtChg}', '{turn}') ".format(
-                            stock_name=row['股票名称'], stock_id=row['股票代码'], trade_date=row['日期'], open=row['开盘'], high=row['最高'], low=row['最低'], close=row['收盘'], volume=row['成交量'],
-                            amount=row['成交额'], amp=row['振幅'], turn=row['换手率'], pctChg=row['涨跌幅'], amtChg=row['涨跌额'])
-                        # print(sql)
-                        sql_list.append(sql)
-                        count_data += 1
-                    db.execute(sql_list)
-                    idx_stock += 1
-                    log.info("{0}/{1} : {2} {3}".format(idx_stock, count_stock, code, count_data))
+                    # data clear
+                    df = df[["股票名称", "股票代码", "日期", "开盘", "最高", "最低", "收盘", "成交量", "成交额", "振幅", "涨跌幅", "涨跌额", "换手率"]]
+                    # delete
+                    db.execute("delete from ods_efinance_cnstock_k_d where stock_id='{code}'".format(code=code))
+                    # insert data
+                    sql = "insert into ods_efinance_cnstock_k_d "
+                    sql += " (stock_name, stock_id, trade_date, open, high, low, close, volume, amount, amp, pctChg, amtChg, turn) "
+                    sql += " values "
+                    sql += " (?,?,?,?,?,?,?,?,?,?,?,?,?) "
+                    res = db.execute_many(sql, df.to_records(index=False))
+
+                    if res:
+                        log.info("{0}/{1} : {2} {3}".format(idx_stock, count_stock, code, df.shape[0]))
+                    else:
+                        log.info("{0}/{1} : {2} 下载失败".format(idx_stock, count_stock, code))
+
+            log.info("全部股票日K线下载完成")
             return True
         except Exception as err:
-            print(sql)
-            log.info("eFinance下载证券清单失败，错误原因 : {err}".format(err=err))
+            log.error("eFinance下载证券清单失败，错误原因 : {err}".format(err=err))
             return False
 
 
 if __name__ == "__main__":
-    # 股票清单
-    unit = SecurityListUnit()
-    res = unit.download_all()
-    print(res)
-
-    # # 股票日k线
-    # unit = CnStockDailyK()
+    # # 股票清单
+    # unit = SecurityListUnit()
     # res = unit.download_all()
     # print(res)
+
+    # 股票日k线
+    unit = CnStockDailyK()
+    res = unit.download_all()
+    print(res)
