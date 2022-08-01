@@ -189,6 +189,7 @@ class BaostockGateWay:
                 return None
 
             rs = callback(*args, **kargs)
+
             if rs is None:
                 logger.error("调用baostock失败，传入参数：{0}".format(kargs))
                 return None

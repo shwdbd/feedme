@@ -13,7 +13,6 @@ from com.wdbd.feedme.fd.common.data_gateway import EFinanceGateWay
 import datetime
 from com.wdbd.feedme.fd.common.common import SQLiteDb as SQLiteDb
 import com.wdbd.feedme.fd.common.common as tl
-from progress.bar import Bar
 
 
 class SecurityListUnit:
@@ -27,31 +26,22 @@ class SecurityListUnit:
 
         try:
             gw = EFinanceGateWay()
-            df = gw.call(callback=ef.stock.get_realtime_quotes)[["股票代码", '股票名称', '市场类型']]
+            df = gw.call(callback=ef.stock.get_realtime_quotes)[['股票名称', "股票代码", '市场类型']]
             log.info("【eFinance】获得 证券清单 接口数据{0}条".format(df.shape[0]))
-            bar = Bar('证券清单', max=(df.shape[0] / 100)+2)
-            # print(df)
 
-            sql_list = []
             with SQLiteDb() as db:
-                sql_list.append("delete from ods_efinance_cnstock_list")
-                for index, row in df.iterrows():
-                    # print(row['code_name'])
-                    sql = "insert into ods_efinance_cnstock_list "
-                    sql += " (stock_name, stock_id, market) "
-                    sql += " values "
-                    sql += " ('{stock_name}', '{stock_id}', '{market}') ".format(
-                        stock_name=row['股票名称'], stock_id=row['股票代码'], market=row['市场类型'])
-                    sql_list.append(sql)
-                    if (index) % 100 == 0:
-                        bar.next()
-                db.execute(sql_list)
-                bar.next()
+                sql = "delete from ods_efinance_cnstock_list"
+                db.execute(sql)
+
+                sql = "insert into ods_efinance_cnstock_list "
+                sql += " (stock_name, stock_id, market) "
+                sql += " values "
+                sql += " (?, ?, ?) "
+                db.execute_many(sql, df.to_records(index=False))
 
                 sql = "select count(*) as count_all from ods_efinance_cnstock_list "
                 count = db.query_one(sql)
                 t2 = datetime.datetime.now()
-                print("\n")     # 跳过，更好的显示
                 log.info("【eFinance】导入 证券清单 {c} 条数据，耗时{t}".format(
                     c=count["count_all"], t=(t2-t1)))
             return True
@@ -111,12 +101,12 @@ class CnStockDailyK:
 
 
 if __name__ == "__main__":
-    # # 股票清单
-    # unit = SecurityListUnit()
-    # res = unit.download_all()
-    # print(res)
-
-    # 股票日k线
-    unit = CnStockDailyK()
+    # 股票清单
+    unit = SecurityListUnit()
     res = unit.download_all()
     print(res)
+
+    # # 股票日k线
+    # unit = CnStockDailyK()
+    # res = unit.download_all()
+    # print(res)

@@ -120,6 +120,10 @@ class SQLiteDb:
         """ 记录SQL语句 """
         get_logger().debug("SQL:" + str(sql))
 
+    def _log_err_sql(self, sql):
+        """ 记录ERR SQL语句 """
+        get_logger().error("ERR SQL:" + str(sql))
+
     # 查询单条数据
     def query_one(self, sql):
         """ 查询单条 """
@@ -129,7 +133,8 @@ class SQLiteDb:
             res = self.cur.fetchone()
             return res
         except Exception as e:
-            get_logger().error("ERR SQL : " + str(e))
+            self._log_err_sql(sql)
+            get_logger().error("SQL错误: " + str(e))
             return None
 
     def query(self, sql):
@@ -140,11 +145,12 @@ class SQLiteDb:
             res = self.cur.fetchall()
             return res
         except Exception as e:
-            get_logger().error("ERR SQL : " + str(e))
+            self._log_err_sql(sql)
+            get_logger().error("SQL错误: " + str(e))
             return None
 
     def execute(self, sqls):
-        """ 执行SQL语句() """
+        """ 执行单条或少量的SQL语句() """
         if type(sqls) is str:
             sql_list = [sqls]
         else:
@@ -157,8 +163,25 @@ class SQLiteDb:
             self.conn.commit()
             self._log_sql("事务提交")
         except Exception as err:
-            self._log_sql("ERR SQL = " + str(err))
-            print('Something went wrong: ', str(err))
+            self._log_err_sql(sqls)
+            self._log_sql("SQL错误 = " + str(err))
+            self.conn.rollback()
+            self._log_sql("事务已回滚")
+
+    def execute_many(self, sql_str, data):
+        """ 执行批量SQL语句 """
+        if data is None or len(data) == 0:
+            return
+
+        try:
+            self._log_sql("批量SQL:" + sql_str)
+            self._log_sql("批量数据，总记录数{0} ".format(len(data)))
+            self.cur.executemany(sql_str, data)
+            self.conn.commit()
+            self._log_sql("事务提交")
+        except Exception as err:
+            self._log_err_sql(sql_str)
+            self._log_sql("SQL错误 = " + str(err))
             self.conn.rollback()
             self._log_sql("事务已回滚")
 
