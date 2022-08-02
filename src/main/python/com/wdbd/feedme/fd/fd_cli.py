@@ -11,6 +11,7 @@
 import click
 from com.wdbd.feedme.fd.ds_baostock.bs_stock import SecurityListUnit as bs_SecurityListUnit, CnStockDailyK as bs_CnStockDailyK
 from com.wdbd.feedme.fd.ds_efinance.ef_stock import SecurityListUnit as ef_SecurityListUnit, CnStockDailyK as ef_CnStockDailyK
+from com.wdbd.feedme.fd.tools.data_comparor import datasouce_stat
 
 
 @click.command()
@@ -82,12 +83,19 @@ def dd(source: str, from_date: str, to_date: str = None, data: str = None, recov
         click.echo('无效数据源: {}'.format(source))
 
 
+@click.command()
+def stat():
+    """ 下载数据统计 """
+    datasouce_stat()
+
+
 @click.group()
 def cli():
     pass
 
 
 cli.add_command(dd)
+cli.add_command(stat)
 
 
 if __name__ == "__main__":

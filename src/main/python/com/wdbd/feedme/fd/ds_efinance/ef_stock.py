@@ -53,7 +53,7 @@ class SecurityListUnit:
 class CnStockDailyK:
     """ A股日K线 """
 
-    def download_all(self, start_date=None):
+    def download_all(self, start_date=None, replace=False):
         """ 下载存量 """
         log = tl.get_logger()
         log.info("【eFinance】开始下载 A股日K线 数据")
@@ -63,15 +63,23 @@ class CnStockDailyK:
             gw = EFinanceGateWay()
             with SQLiteDb() as db:
                 # 取得全部的股票代码清单
-                sql = "select stock_id from ods_efinance_cnstock_list limit 2"
+                if replace:
+                    sql = "select stock_id from ods_efinance_cnstock_list"
+                else:
+                    sql = "select stock_id from ods_efinance_cnstock_list where stock_id not in (select distinct stock_id from ods_efinance_cnstock_k_d)"
                 rs = db.query(sql)
 
                 # 取得全部股票数量
-                count_stock = db.query_one("select count(*) as count_all from ods_efinance_cnstock_list")['count_all']
+                # count_stock = db.query_one("select count(*) as count_all from ods_efinance_cnstock_list")['count_all']
+                count_stock = len(rs)
 
                 for idx_stock, record in enumerate(rs, 1):
                     code = record["stock_id"]
                     df = gw.call(callback=ef.stock.get_quote_history, stock_codes=code)
+                    if df is None or df.shape[0] == 0:
+                        log.info("{0}/{1} : {2} 无K线数据".format(idx_stock, count_stock, code))
+                        continue
+
                     # 数据清洗
                     df.fillna(0, inplace=True)
 
@@ -89,13 +97,35 @@ class CnStockDailyK:
                     if res:
                         log.info("{0}/{1} : {2} {3}".format(idx_stock, count_stock, code, df.shape[0]))
                     else:
-                        log.info("{0}/{1} : {2} 下载失败".format(idx_stock, count_stock, code))
+                        log.info("{0}/{1} : {2} 下载失败，数据写入数据库未成功".format(idx_stock, count_stock, code))
 
             log.info("全部股票日K线下载完成")
             return True
         except Exception as err:
-            log.error("eFinance下载证券清单失败，错误原因 : {err}".format(err=err))
+            log.error("eFinance下载证券清单失败, 错误原因 : {err}".format(err=err))
             return False
+
+
+def datasouce_stat():
+    """ 统计数据刷新 """
+    with SQLiteDb() as db:
+        # 取得全部的股票代码清单
+        id = "efinance.stock.daily_k"
+        sql = "select min(distinct trade_date) as start_date, max(distinct trade_date) as end_date from ods_efinance_cnstock_k_d"
+        rs = db.query_one(sql)
+        start_date = rs["start_date"]
+        end_date = rs["end_date"]
+
+        if start_date is None:
+            tl.get_logger().info("efinance股票K线表无数据")
+            return
+        else:
+            sql = "delete from dwd_dtsrc_stat where data_source='{id}'".format(id=id)
+            db.execute(sql)
+            sql = "insert into dwd_dtsrc_stat (data_source, start_dt, end_dt, error_msg) values (?,?,?,?)"
+            db.execute_many(sql, [(id, start_date, end_date, '')])
+            tl.get_logger().info("efinance股票K线统计完成")
+            return
 
 
 if __name__ == "__main__":

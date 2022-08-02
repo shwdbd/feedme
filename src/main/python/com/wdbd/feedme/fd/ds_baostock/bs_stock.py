@@ -68,9 +68,9 @@ class CnStockDailyK:
             with SQLiteDb() as db:
                 # 取得全部的股票代码清单
                 if replace:
-                    sql = "select code from ods_baostock_stock_basic where type_id=1 limit 5"
+                    sql = "select code from ods_baostock_stock_basic where type_id=1"
                 else:
-                    sql = "select code from ods_baostock_stock_basic where type_id=1 and code not in (select distinct code from ods_baostock_cnstock_k_d) limit 5"
+                    sql = "select code from ods_baostock_stock_basic where type_id=1 and code not in (select distinct code from ods_baostock_cnstock_k_d)"
                 rs = db.query(sql)
                 log.info("需要下载股票{0}支".format(len(rs)))
 
@@ -111,6 +111,28 @@ class CnStockDailyK:
         except Exception as err:
             log.error("Baostock下载证券清单失败, 错误原因 : {err}".format(err=err))
             return False
+
+
+def datasouce_stat():
+    """ 统计数据刷新 """
+    with SQLiteDb() as db:
+        # 取得全部的股票代码清单
+        id = "baostock.stock.daily_k"
+        sql = "select min(distinct trade_date) as start_date, max(distinct trade_date) as end_date from ods_baostock_cnstock_k_d"
+        rs = db.query_one(sql)
+        start_date = rs["start_date"]
+        end_date = rs["end_date"]
+
+        if start_date is None:
+            tl.get_logger().info("baostock股票K线表无数据")
+            return
+        else:
+            sql = "delete from dwd_dtsrc_stat where data_source='{id}'".format(id=id)
+            db.execute(sql)
+            sql = "insert into dwd_dtsrc_stat (data_source, start_dt, end_dt, error_msg) values (?,?,?,?)"
+            db.execute_many(sql, [(id, start_date, end_date, '')])
+            tl.get_logger().info("baostock股票K线统计完成")
+            return
 
 
 if __name__ == "__main__":
