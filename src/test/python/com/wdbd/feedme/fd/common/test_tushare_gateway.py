@@ -11,7 +11,7 @@
 '''
 import unittest
 import pandas as pd
-from com.wdbd.feedme.fd.common.data_dateway import TushareGateWay
+from com.wdbd.feedme.fd.common.data_gateway import TushareGateWay
 import com.wdbd.feedme.fd.common.common as tl
 
 

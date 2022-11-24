@@ -12,10 +12,11 @@ import click
 from com.wdbd.feedme.fd.ds_baostock.bs_stock import SecurityListUnit as bs_SecurityListUnit, CnStockDailyK as bs_CnStockDailyK
 from com.wdbd.feedme.fd.ds_efinance.ef_stock import SecurityListUnit as ef_SecurityListUnit, CnStockDailyK as ef_CnStockDailyK
 from com.wdbd.feedme.fd.tools.data_comparor import datasouce_stat
+from com.wdbd.feedme.fd.ds_tushare.ts_stock import TsTradeCal
 
 
 @click.command()
-@click.option('--source', '-s', help='数据源, 可以选择baostock|efinance', type=str)
+@click.option('--source', '-s', help='数据源, 可以选择baostock|efinance|tushare', type=str)
 @click.option('--data', '-d', help='数据项目', type=str)
 @click.option('--from_date', '-f', help='开始日期', type=str)
 @click.option('--to_date', '-t', help='终止日期，默认为系统日期今天', type=str)
@@ -33,6 +34,12 @@ def dd(source: str, from_date: str, to_date: str = None, data: str = None, recov
     if not source:
         click.echo('数据源必须指定')
         return
+    elif source.lower() == 'tushare' or source.lower() == 'ts':
+        if data.lower() == 'trade_cal' or data.lower() == 'cal':
+            # 交易日历
+            unit = TsTradeCal()     # TODO 加入日期参数
+            res = unit.download_all(start_date="20221101", end_date="20221102")
+            return
     elif source.lower() == 'baostock' or source.lower() == 'bs':
         if not data:
             # 默认下载资产清单

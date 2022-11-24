@@ -14,7 +14,9 @@ gtp v0.1.6 从旧版本迁移来的内容有：
 3. 文本日志
 4. 日期时间的处理
 '''
-
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
 import logging.config
 import configparser
 # import pymongo
@@ -189,6 +191,26 @@ class SQLiteDb:
 
 
 # =============================================
+# ORM 工具函数
+
+# 连接数据库引擎
+def get_engine():
+    DB_CONN_STR = "sqlite:///" + get_cfg(section="sqlite3", key="db.path")
+    echo = bool(get_cfg(section="sqlite3", key="echo"))
+    engine = create_engine(DB_CONN_STR, echo=echo)
+    return engine
+
+
+Base = declarative_base()
+
+
+def get_session():
+    """ 取得数据库会话 """
+    Session = sessionmaker(bind=get_engine())
+    return Session()
+
+
+# =============================================
 # 日志
 # 使用方式：log.info('xxxx')
 def get_logger():
@@ -230,6 +252,50 @@ def get_p():
     print(os.getcwd())
     print("realpath = " + os.path.realpath(__file__))
     return print("\\".join(os.path.abspath(__file__).split("\\")[:-1]))
+
+
+# =============================================
+# 其他工具函数
+
+# DataFrame转成的dict格式，转成数据对象
+def record2object(record: dict, obj: object):
+    """DataFrame转成的dict格式，转成数据对象
+
+    前提要求：record中的每个字段，都在Object中有同名的属性
+
+    record样子：{'col1':1, 'col2':0.5}
+
+    Args:
+        record (dict): 待转换的dict
+        record (dict): 转换后的object
+
+    Returns:
+        object: 转换后的object
+    """
+    if not dict:
+        return None
+    if not isinstance(record, dict):
+        return None
+
+    for f_name in record.keys():
+        setattr(obj, f_name, record[f_name])
+
+    return obj
+
+
+# DataFrame转成的dict列表，转成数据对象列表
+def records2objlist(pd_df: list, clz):
+    """ DataFrame转成的dict列表，转成数据对象列表 """
+    obj_list = []
+    for d in pd_df.to_dict("records"):
+        obj_list.append(record2object(d, clz()))
+    return obj_list
+
+
+# if __name__ == "__main__":
+#     # print(get_cfg(section="sqlite3", key="db.path"))
+#     e = get_engine()
+#     print(e)
 
 # if __name__ == "__main__":
 #     # get_logger().info("xxxx")

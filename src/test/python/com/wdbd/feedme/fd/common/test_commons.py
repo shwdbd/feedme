@@ -7,9 +7,23 @@
 @Version :   1.0
 @Contact :   shwangjj@163.com
 @Desc    :   针对gtp.fd.commons.py功能的单元测试
+
 '''
 import unittest
 import com.wdbd.feedme.fd.common.common as tl
+
+
+class TestSQL3_SQLAlchemy(unittest.TestCase):
+    """ ORM数据库连接测试 """
+
+    def test_conn(self):
+        """ 测试ORM数据库连接 """
+        tl.TEST_MODE = True
+        engine = tl.get_engine()
+        self.assertIsNotNone(engine)
+        session = tl.get_session()
+        self.assertIsNotNone(session)
+        session.close()
 
 
 class TestCommonsConfigFile(unittest.TestCase):
@@ -68,3 +82,40 @@ class TestDateAndTime(unittest.TestCase):
         """ 今日 """
         self.assertIsNotNone(tl.today())
         self.assertIsNotNone(tl.now())
+
+
+class TestOtherToolsFunc(unittest.TestCase):
+    """ 测试其他工具函数 """
+
+    class DataStruct:
+        
+        def __init__(self):
+            self.id = ""
+            self.age = 100
+
+    def test_record2object(self):
+        """ 测试 DataFrame转成的dict格式，转成数据对象"""
+        d = {"id": "值1", "age": 200}
+        # 成功转换情况
+        obj = tl.record2object(record=d, obj=self.DataStruct())
+        self.assertIsNotNone(obj)
+        self.assertEqual("值1", obj.id)
+        self.assertEqual(200, obj.age)
+
+        # dict有的字段，对象中无对应的属性
+        d = {"id": "值1", "age": 100, "sex": "female"}
+        obj = tl.record2object(record=d, obj=self.DataStruct())
+        self.assertIsNotNone(obj)
+
+        # record中字段不够的情况
+        d = {"id": "值1"}
+        obj = tl.record2object(record=d, obj=self.DataStruct())
+        self.assertIsNotNone(obj)
+        self.assertEqual(100, obj.age)
+
+        # dict为空，或者None，或者不是dict类型
+        obj = tl.record2object(record=None, obj=self.DataStruct)
+        self.assertIsNone(obj)
+        obj = tl.record2object(record=[], obj=self.DataStruct)
+        self.assertIsNone(obj)
+        
