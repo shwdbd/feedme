@@ -20,6 +20,9 @@ import sqlalchemy
 class TsTradeCal:
     """ 交易日历下载类 """
 
+    def __init__(self):
+        self.DS_ID = "tushare.trade_cal"    # 数据源ID
+
     def download_all(self, start_date: str = "19000101", end_date: str = "21001231") -> dict:
         """下载更新全部日历数据
 
@@ -36,8 +39,6 @@ class TsTradeCal:
         log = get_logger()
 
         # 起始日期
-        # start_date = "20221122"
-        # end_date = "20221123"
         log.info("下载更新Tushare交易日历全量数据 [{0} : {1}]".format(start_date, end_date))
 
         # 交易所 SSE上交所,SZSE深交所,CFFEX 中金所,SHFE 上期所,CZCE 郑商所,DCE 大商所,INE 上能源
@@ -77,13 +78,40 @@ class TsTradeCal:
             return {"result": False, "msg": [err_msg]}
 
         # 更新统计表
-        DsStatTool.log(id="tushare.trade_cal", end_bar=last_bar, start_bar=first_bar)
+        DsStatTool.log(id=self.DS_ID, end_bar=last_bar, start_bar=first_bar)
 
         log.info("下载更新完成")
         return {"result": True, "msg": []}
 
 
-if __name__ == "__main__":
-    srv = TsTradeCal()
-    res = srv.download_all()
-    print(res)
+# A股股票清单
+class TsStockList:
+    """ A股股票清单 """
+
+    # 全量下载更新
+    def download(self):
+        # TODO 待实现
+        pass
+
+
+# A股股票清单
+class TsStockDaily:
+    """ tushareA股日线行情（未复权） """
+
+    # TODO tushare字段与数据库字段不一一匹配的问题
+
+    # 按日期下载全部股票日线数据
+    def download_by_date(self, trade_date: str):
+        # TODO 待实现
+        pass
+
+    # 按股票下载全部历史数据
+    def download_by_stock(self, ts_code: str, start_date: str = None, end_date: str = None):
+        # TODO 待实现
+        pass
+
+
+# if __name__ == "__main__":
+#     srv = TsTradeCal()
+#     res = srv.download_all()
+#     print(res)

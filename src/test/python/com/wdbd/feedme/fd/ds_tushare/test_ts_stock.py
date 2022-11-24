@@ -15,6 +15,7 @@ from com.wdbd.feedme.fd.ds_tushare.ts_stock import TsTradeCal
 from sqlalchemy import func
 
 
+# 交易日历
 class TestTsTradeCal(unittest.TestCase):
     """ 交易日历 数据下载 """
 
