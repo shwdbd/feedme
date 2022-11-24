@@ -8,7 +8,7 @@
 @Contact :   shwangjj@163.com
 @Desc    :   股票数据下载
 '''
-from com.wdbd.feedme.fd.common.data_gateway import TushareGateWay
+from com.wdbd.feedme.fd.common.data_gateway import TushareGateWay, DsStatTool
 from com.wdbd.feedme.fd.ds_tushare.ts_ci import FIELDS
 from com.wdbd.feedme.fd.common.common import records2objlist, get_session, get_logger
 from com.wdbd.feedme.fd.orm.ods_tables import OdsTushareTradeCal
@@ -61,6 +61,8 @@ class TsTradeCal:
             session.query(OdsTushareTradeCal).delete()      # 清除表数据
             session.bulk_save_objects(obj_list)
             session.commit()
+            first_bar = session.query(sqlalchemy.func.min(OdsTushareTradeCal.cal_date)).scalar()
+            last_bar = session.query(sqlalchemy.func.max(OdsTushareTradeCal.cal_date)).scalar()
         except Exception as err:
             log.error("SQL异常:" + str(err))
             session.rollback()
@@ -73,6 +75,9 @@ class TsTradeCal:
             err_msg = "存入数据库记录数量({0})不等于下载数据量({1})".format(record_count, df.shape[0])
             log.error(err_msg)
             return {"result": False, "msg": [err_msg]}
+
+        # 更新统计表
+        DsStatTool.log(id="tushare.trade_cal", end_bar=last_bar, start_bar=first_bar)
 
         log.info("下载更新完成")
         return {"result": True, "msg": []}

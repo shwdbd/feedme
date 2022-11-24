@@ -19,6 +19,8 @@
 2、对于tushare包的需求
 3、对于tushare配置文件的依赖
 
+2022-11-24 增加数据源统计表的工具服务
+
 '''
 import com.wdbd.feedme.fd.common.common as tl
 import tushare as ts
@@ -26,7 +28,15 @@ import time
 import json
 import baostock as bs
 import pandas as pd
-import efinance as ef
+# import efinance as ef
+from com.wdbd.feedme.fd.orm.ods_tables import OdsDsStat
+from sqlalchemy import func
+
+
+# 数据源列表
+DATA_SOURCES = {
+    "tushare.trade_cal": "Tushare交易日历",
+}
 
 
 class TushareGateWay:
@@ -303,25 +313,81 @@ class EFinanceGateWay:
             return None
 
 
+class DsStatTool:
+    """ 数据源统计表的工具 """
+
+    @staticmethod
+    def log(id: str, end_bar: str, name: str = None, start_bar: str = "", missing_bar: str = "", notes: str = "") -> bool:
+        """登记统计信息
+
+        如果id不存在，则在表中新增，否则是更新
+
+        Args:
+            id (str): 数据源ID
+            end_bar (str): 最新的Bar时间
+            name (str, optional): 数据源名. Defaults to None.
+            start_bar (str, optional): _description_. Defaults to None.
+            missing_bar (str, optional): 缺少的Bar. Defaults to None.
+            notes (str, optional): 备注. Defaults to None.
+
+        Returns:
+            bool: 执行结果
+        """
+        log = tl.get_logger()
+        try:
+            session = tl.get_session()
+            record_count = session.query(func.count(OdsDsStat.ds_id)).filter(OdsDsStat.ds_id == id).scalar()
+            if record_count > 0:
+                record = session.query(OdsDsStat).filter(OdsDsStat.ds_id == id).scalar()
+                record.end_bar = end_bar
+                if start_bar != '':
+                    record.start_bar = start_bar
+                if missing_bar != '':
+                    record.missing_bar = missing_bar
+                if notes != '':
+                    record.notes = notes
+                log.debug("[{0}]统计状态更新".format(id))
+            else:
+                # 新增
+                if not name:
+                    name = DATA_SOURCES[id]
+                stat = OdsDsStat(ds_id=id, ds_name=name, start_bar=start_bar, end_bar=end_bar, missing_bar=missing_bar, notes=notes)
+                session.add(stat)
+                log.debug("[{0}]新建统计状态".format(id))
+            session.commit()
+
+            return True
+        except Exception as err:
+            tl.get_logger().error("更新数据源统计表 SQL异常:" + str(err))
+            session.rollback()
+            return False
+        finally:
+            session.close()
+
+
 if __name__ == "__main__":
-    gw = EFinanceGateWay()
+    res = DsStatTool.log(id="tushare.trade_cal", end_bar="20001211", notes="xxx")
+    print(res)
 
-    # # 股票日K线
-    # # 股票代码
-    # stock_code = '600519'
-    # # 开始日期
-    # beg = '20210101'
-    # # 结束日期
-    # end = '20210708'
-    # df = gw.call(callback=ef.stock.get_quote_history, stock_codes=stock_code, beg=beg, end=end)
-    # print(df)
-    # # ef.stock.get_realtime_quotes
+# if __name__ == "__main__":
+#     gw = EFinanceGateWay()
 
-    # 股票代码
-    # df = gw.call(callback=ef.stock.get_realtime_quotes, fs=['可转债'])
-    # print(df[["股票代码", '股票名称', '市场类型']])
-    df = gw.call(callback=ef.stock.get_base_info, stock_codes=['600016'])
-    print(df)
+#     # # 股票日K线
+#     # # 股票代码
+#     # stock_code = '600519'
+#     # # 开始日期
+#     # beg = '20210101'
+#     # # 结束日期
+#     # end = '20210708'
+#     # df = gw.call(callback=ef.stock.get_quote_history, stock_codes=stock_code, beg=beg, end=end)
+#     # print(df)
+#     # # ef.stock.get_realtime_quotes
+
+#     # 股票代码
+#     # df = gw.call(callback=ef.stock.get_realtime_quotes, fs=['可转债'])
+#     # print(df[["股票代码", '股票名称', '市场类型']])
+#     df = gw.call(callback=ef.stock.get_base_info, stock_codes=['600016'])
+#     print(df)
 
 # if __name__ == "__main__":
 #     gw = TushareGateWay()

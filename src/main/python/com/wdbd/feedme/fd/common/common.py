@@ -25,7 +25,7 @@ import os
 import sqlite3
 
 
-# TODO 为生产、测试配置不同配置文件
+# 为开发、测试配置不同配置文件
 TEST_MODE = False
 
 
@@ -34,8 +34,10 @@ TEST_MODE = False
 def get_cfg(section, key):
     """ 读取数据下载服务配置文件内容 """
     if TEST_MODE:
+        # 测试环境
         file_path = "src/test/config/fd.cfg"
     else:
+        # 开发环境
         file_path = "src/main/config/fd.cfg"
 
     try:
@@ -196,7 +198,10 @@ class SQLiteDb:
 # 连接数据库引擎
 def get_engine():
     DB_CONN_STR = "sqlite:///" + get_cfg(section="sqlite3", key="db.path")
-    echo = bool(get_cfg(section="sqlite3", key="echo"))
+    if get_cfg(section="sqlite3", key="echo").lower() == 'true':
+        echo = True
+    else:
+        echo = False
     engine = create_engine(DB_CONN_STR, echo=echo)
     return engine
 

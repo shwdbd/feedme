@@ -10,7 +10,7 @@
 '''
 import unittest
 import com.wdbd.feedme.fd.common.common as tl
-from com.wdbd.feedme.fd.orm.ods_tables import OdsTushareTradeCal
+from com.wdbd.feedme.fd.orm.ods_tables import OdsTushareTradeCal, OdsDsStat
 from com.wdbd.feedme.fd.ds_tushare.ts_stock import TsTradeCal
 from sqlalchemy import func
 
@@ -36,4 +36,12 @@ class TestTsTradeCal(unittest.TestCase):
         # 检查表中记录数量
         record_count = session.query(func.count(OdsTushareTradeCal.cal_date)).scalar()
         self.assertEqual(2*5, record_count)   # 目前只有5个交易所数据
+        # 检查统计表信息
+        stat = session.query(OdsDsStat).filter(OdsDsStat.ds_id == 'tushare.trade_cal').one_or_none()
+        self.assertIsNotNone(stat)
+        self.assertEqual(stat.ds_name, "Tushare交易日历")
+        self.assertEqual(stat.start_bar, "20221120")
+        self.assertEqual(stat.end_bar, "20221121")
+        self.assertEqual(stat.missing_bar, "")
+        self.assertEqual(stat.notes, "")
         session.close()
