@@ -82,7 +82,7 @@ class OdsTushareDaily(Base):
     p_change = Column(DECIMAL(10, 2))
     pct_chg = Column(DECIMAL(10, 2))
     vol = Column(DECIMAL(10, 2))
-    amount = Column(DECIMAL(10, 2))
+    amount = Column(DECIMAL(10, 4))
 
     def __repr__(self) -> str:
         return "Tushare A股日线[{0}, {1}] ".format(self.ts_code, self.trade_date)

@@ -36,6 +36,8 @@ from sqlalchemy import func
 # 数据源列表
 DATA_SOURCES = {
     "tushare.trade_cal": "Tushare交易日历",
+    "tushare.stock_basic": "tushareA股股票基础信息",
+    "tushare.daily": "tushareA股日线行情（未复权）",
 }
 
 

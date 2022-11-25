@@ -12,7 +12,8 @@ import click
 from com.wdbd.feedme.fd.ds_baostock.bs_stock import SecurityListUnit as bs_SecurityListUnit, CnStockDailyK as bs_CnStockDailyK
 from com.wdbd.feedme.fd.ds_efinance.ef_stock import SecurityListUnit as ef_SecurityListUnit, CnStockDailyK as ef_CnStockDailyK
 from com.wdbd.feedme.fd.tools.data_comparor import datasouce_stat
-from com.wdbd.feedme.fd.ds_tushare.ts_stock import TsTradeCal
+from com.wdbd.feedme.fd.ds_tushare.ts_stock import TsTradeCal, TsStockDaily, TsStockList
+import com.wdbd.feedme.fd.common.common as tl
 
 
 @click.command()
@@ -36,9 +37,17 @@ def dd(source: str, from_date: str, to_date: str = None, data: str = None, recov
         return
     elif source.lower() == 'tushare' or source.lower() == 'ts':
         if data.lower() == 'trade_cal' or data.lower() == 'cal':
-            # 交易日历
-            unit = TsTradeCal()     # TODO 加入日期参数
-            res = unit.download_all(start_date="20221101", end_date="20221102")
+            # 下载Tushare交易日历
+            unit = TsTradeCal()
+            res = unit.download_all()
+            return
+        elif data.lower() == 'stock_daily' or data.lower() == 'daily':
+            # 下载Tushare A股日线数据
+            if not from_date or from_date == '':
+                click.echo("from_date参数必须提供！")
+                return
+            unit = TsStockDaily()
+            res = unit.download_by_date(trade_date=from_date)
             return
     elif source.lower() == 'baostock' or source.lower() == 'bs':
         if not data:
@@ -91,6 +100,26 @@ def dd(source: str, from_date: str, to_date: str = None, data: str = None, recov
 
 
 @click.command()
+@click.option('--date', '-d', help='指定的交易日期，默认今日', type=str)
+def get_today(date: str = tl.today()):
+    """下载今日数据
+
+    Args:
+        date (str): 指定交易日期
+    """
+    # TODO 补充日志输出等内容
+    if not date:
+        date = tl.today()
+    print(date)
+
+    unit = TsStockList()
+    unit.download()
+
+    unit = TsStockDaily()
+    unit.download_by_date(date)
+
+
+@click.command()
 def stat():
     """ 下载数据统计 """
     datasouce_stat()
@@ -101,7 +130,8 @@ def cli():
     pass
 
 
-cli.add_command(dd)
+cli.add_command(cmd=dd, name="download")
+cli.add_command(cmd=get_today, name="today")
 cli.add_command(stat)
 
 
