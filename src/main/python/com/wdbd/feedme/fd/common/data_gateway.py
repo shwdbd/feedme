@@ -268,7 +268,13 @@ class BaostockGateWay:
 
 
 class EFinanceGateWay:
-    """ efinance 网关 """
+    """ efinance网关
+
+    使用方法：
+    gw = EFinanceGateWay()
+    df = gw.call(callback=ef.stock.get_realtime_quotes)
+
+    """
 
     # 股票K线字段：
     # 股票名称    股票代码          日期       开盘       收盘       最高       最低       成交量           成交额    振幅   涨跌幅    涨跌额    换手率
@@ -289,7 +295,6 @@ class EFinanceGateWay:
         调用示例：
         df = gw.call(callback=bs.get_quote_history, stock_codes='600519', beg=beg, end=end)
 
-
         要实现的功能：
         - 每次调用，日志记录
         - 统一抛出异常
@@ -303,10 +308,13 @@ class EFinanceGateWay:
         logger = tl.get_logger()
 
         try:
+            logger.debug("<EFinanceGateWay> 调用: {0}, 参数: {1}".format(callback, kargs))
             df = callback(*args, **kargs)
             if df is None:
-                logger.error("调用efinance失败，传入参数：{0}".format(kargs))
+                logger.error("调用efinance失败, 传入参数: {0}".format(kargs))
                 return None
+            else:
+                logger.debug("<EFinanceGateWay> 调用成功")
 
             return df
         except Exception as err:

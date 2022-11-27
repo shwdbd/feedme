@@ -2,7 +2,13 @@
 
 官网：<https://github.com/Micro-sheep/efinance/>
 
-内容：
+## 概述与问题
+
+- 网络要求：代理模式下无法使用，不能用翻墙工具
+
+
+
+### 数据清单
 
 - 股票
   - 股票历史日 K 线数据（A股、美股、港股）ef.stock.get_quote_history
@@ -24,10 +30,6 @@
 - 期货
   - 交易所期货基本信息 ef.futures.get_futures_base_info()
   - 期货历史行情 ef.futures.get_realtime_quotes()['行情ID']
-
-## 概述与问题
-
-- 网络要求：代理模式下无法使用，不能用翻墙工具
 
 ## API 清单
 
@@ -51,6 +53,10 @@
 | get_quote_snapshot          | stock_code                                                   | 获取沪深市场股票最新行情快照                                 |
 | get_deal_detail             | stock_code, max_count                                        | 获取股票最新交易日成交明细                                   |
 | get_belong_board            | stock_code                                                   | 获取股票所属板块                                             |
+
+### 版本情况
+
+最新版本：0.4.8
 
 
 
@@ -169,7 +175,7 @@ def get_quote_history(stock_codes: Union[str, List[str]],
 
 ### 沪深市场 A 股最新状况
 
-从此处可以获取股票基本信息，股票清单
+从此处可以获取股票基本信息，即股票清单。
 
 代码调用示例：
 

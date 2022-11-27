@@ -15,14 +15,26 @@ from com.wdbd.feedme.fd.common.common import SQLiteDb as SQLiteDb
 import com.wdbd.feedme.fd.common.common as tl
 
 
+# A股股票清单下载
 class SecurityListUnit:
-    """ 证券清单下载 """
+    """ 
+    A股股票清单下载
+    """
 
-    def download_all(self, start_date=None):
-        """ 全量下载 """
+    def download_all(self):
+        """下载A股股票清单到ods_efinance_cnstock_list表中
+        
+        全量下载，刷新ods_efinance_cnstock_list表
+        
+        Returns:
+            _type_: _description_
+        """
+        # TODO 待单元测试
+        # FIXME 使用sqlalchemy进行改造
+        # FIXME 返回值改成 {result:True, msg=[]}模式
         log = tl.get_logger()
         t1 = datetime.datetime.now()
-        log.info("【eFinance】开始下载 证券清单")
+        log.debug("【eFinance】开始下载 证券清单")
 
         try:
             gw = EFinanceGateWay()

@@ -6,15 +6,34 @@
 @Author  :   Jeffrey Wang
 @Version :   1.0
 @Contact :   shwangjj@163.com
-@Desc    :   测试Tushare数据网关
+@Desc    :   数据网关功能测试
 
 '''
 import unittest
 import pandas as pd
-from com.wdbd.feedme.fd.common.data_gateway import TushareGateWay
+from com.wdbd.feedme.fd.common.data_gateway import TushareGateWay, EFinanceGateWay
 import com.wdbd.feedme.fd.common.common as tl
+import pandas as pd
+import efinance as ef
 
 
+class TestEFinanceGateWay(unittest.TestCase):
+    """ EFinance数据网关测试 """
+
+    def setUp(self) -> None:
+        tl.TEST_MODE = True
+        return super().setUp()
+
+    def test_connect(self):
+        """ 测试连接API """
+        gw = EFinanceGateWay()
+        self.assertIsNotNone(gw)
+        df = gw.call(callback=ef.stock.get_realtime_quotes)
+        self.assertIsNotNone(df)
+        self.assertIsInstance(df, pd.DataFrame)
+    
+
+# Tushare数据网关测试
 class TestTushareGateway(unittest.TestCase):
     """ Tushare数据网关测试 """
 

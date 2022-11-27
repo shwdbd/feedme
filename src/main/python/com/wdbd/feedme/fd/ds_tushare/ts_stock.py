@@ -39,7 +39,7 @@ class TsTradeCal:
         log = get_logger()
 
         # 起始日期
-        log.info("下载更新Tushare交易日历全量数据 [{0} : {1}]".format(start_date, end_date))
+        log.debug("下载更新Tushare交易日历全量数据 [{0} : {1}]".format(start_date, end_date))
 
         # 交易所 SSE上交所,SZSE深交所,CFFEX 中金所,SHFE 上期所,CZCE 郑商所,DCE 大商所,INE 上能源
         exchanges = ['SSE', 'SZSE', 'CFFEX', 'SHFE', 'CZCE', 'DCE', 'INE']
@@ -99,7 +99,7 @@ class TsStockList:
         log = get_logger()
 
         # 起始日期
-        log.info("下载更新Tushare A股票清单全量数据")
+        log.debug("下载更新Tushare A股票清单全量数据")
 
         gw = TushareGateWay()
         df = gw.call(gw.api.stock_basic, fields=FIELDS["stock_basic"])
@@ -150,7 +150,7 @@ class TsStockDaily:
             log.error("交易日期为空，下载终止！")
             return {"result": False, "msg": ["交易日期为空"]}
 
-        log.info("下载更新Tushare A股日线数据 [date={0}]".format(trade_date))
+        log.debug("下载更新Tushare A股日线数据 [date={0}]".format(trade_date))
 
         gw = TushareGateWay()
         if stock_id:
@@ -196,7 +196,7 @@ class TsStockDaily:
     def download_by_stock(self, ts_code: str, trade_date: str = None, start_date: str = None, end_date: str = None):
         log = get_logger()
 
-        log.info("下载更新Tushare A股日线数据 [id={0}]".format(ts_code))
+        log.debug("下载更新Tushare A股日线数据 [id={0}]".format(ts_code))
 
         gw = TushareGateWay()
         if trade_date:
@@ -254,12 +254,12 @@ class TsStockDaily:
             count_of_stocks = len(stocks)
             log.info("共计有{0}支股票历史日线数据开始下载，请等待较长时间 ...".format(count_of_stocks))
             for idx, stock in enumerate(stocks, start=1):
-                log.info("{idx}/{all} {id}:{name}".format(idx=idx, all=count_of_stocks, id=stock[0], name=stock[1]))
+                log.debug("{idx}/{all} {id}:{name}".format(idx=idx, all=count_of_stocks, id=stock[0], name=stock[1]))
                 self.download_by_stock(ts_code=stock[0])
                 # if idx>5:
                 #     break
 
-            log.info("全部下载完成！")
+            log.debug("全部下载完成！")
         except Exception as err:
             err_msg = "下载Tushare A股股票历史全量日线时遇到异常，SQL异常:" + str(err)
             log.error(err_msg)
