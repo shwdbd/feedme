@@ -55,7 +55,7 @@ def run():
     datapath = os.path.join(modpath, r"dfqc.csv")
     dataframe = pd.read_csv(datapath, index_col=0, parse_dates=True)
     # Create a Data Feed
-    data = bt.feeds.PandasData(dataname=dataframe, fromdate=datetime.datetime(2016, 12, 1), todate=datetime.datetime(2016, 12, 31))
+    data = bt.feeds.PandasData(dataname=dataframe, fromdate=datetime.datetime(2016, 12, 1), todate=datetime.datetime(2016, 12, 10))
 
     # Add the Data Feed to Cerebro
     cerebro.adddata(data)
