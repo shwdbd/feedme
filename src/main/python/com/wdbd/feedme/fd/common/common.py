@@ -28,6 +28,8 @@ import sqlite3
 # 为开发、测试配置不同配置文件
 TEST_MODE = False
 
+# TODO 日期格式变更工具
+
 
 # =============================================
 # 配置文件
@@ -240,16 +242,35 @@ def get_logger():
 # 日期时间工具
 DATE_FORMAT = "%Y%m%d"
 TIME_FORMAT = "%Y%m%d %H%M%S"
+DATE_VIEW_FORMAT = "%Y-%m-%d"
+TIME_VIEW_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 def today():
     """取得当前系统日期的字符串"""
+    # print(datetime.datetime.now())
     return datetime.datetime.now().strftime(DATE_FORMAT)
 
 
 def now():
     """取得当前系统时间的字符串"""
     return datetime.datetime.now().strftime(TIME_FORMAT)
+
+
+def d2dbstr(view_str: str) -> str:
+    """ 日期视图格式转数据库格式 """
+    if not view_str:
+        return ""
+    dt = datetime.datetime.strptime(view_str, DATE_VIEW_FORMAT)
+    return datetime.datetime.strftime(dt, DATE_FORMAT)
+
+
+def d2viewstr(db_str: str) -> str:
+    """ 日期数据库格式转视图格式 """
+    if not db_str:
+        return ""
+    dt = datetime.datetime.strptime(db_str, DATE_FORMAT)
+    return datetime.datetime.strftime(dt, DATE_VIEW_FORMAT)
 
 
 def get_p():
@@ -338,3 +359,6 @@ def records2objlist(pd_df: list, clz):
 #     print(os.getcwd())
 #     print(os.path.abspath(__file__))
 #     print("\\".join(os.path.abspath(__file__).split("\\")[:-7]))
+
+# if __name__ == "__main__":
+#     print(today())

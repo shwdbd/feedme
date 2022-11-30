@@ -13,7 +13,6 @@ import unittest
 import pandas as pd
 from com.wdbd.feedme.fd.common.data_gateway import TushareGateWay, EFinanceGateWay
 import com.wdbd.feedme.fd.common.common as tl
-import pandas as pd
 import efinance as ef
 
 
@@ -31,7 +30,7 @@ class TestEFinanceGateWay(unittest.TestCase):
         df = gw.call(callback=ef.stock.get_realtime_quotes)
         self.assertIsNotNone(df)
         self.assertIsInstance(df, pd.DataFrame)
-    
+
 
 # Tushare数据网关测试
 class TestTushareGateway(unittest.TestCase):
@@ -62,3 +61,10 @@ class TestTushareGateway(unittest.TestCase):
         res = gw.call(gw.api.daily, start_date="20180810", end_date="20180811", ts_code="600016.SH", return_type="dataframe")
         self.assertTrue(isinstance(res, pd.core.frame.DataFrame))
         self.assertDictEqual(sample_record, res.to_dict('records')[0])
+
+    def test_has_data(self):
+        """ 测试 判断某日某交易接口是否已生成数据 """
+        gw = TushareGateWay()
+        self.assertTrue(gw.has_data(callback=gw.api.daily, trade_date="20221128"))   # 交易日
+        self.assertFalse(gw.has_data(callback=gw.api.daily, trade_date="20221127"))   # 非交易日
+        self.assertFalse(gw.has_data(callback=gw.api.daily, trade_date="19000101"))   # 肯定没有数字的日期

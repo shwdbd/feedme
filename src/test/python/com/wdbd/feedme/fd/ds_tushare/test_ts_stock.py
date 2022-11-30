@@ -89,6 +89,7 @@ class TestTsDaily(unittest.TestCase):
         tl.TEST_MODE = True
         session = tl.get_session()
         session.query(OdsTushareDaily).delete()
+        session.query(OdsDsStat).delete()
         session.commit()
         session.close()
         return super().setUp()
@@ -111,4 +112,18 @@ class TestTsDaily(unittest.TestCase):
         self.assertEqual(stat.end_bar, "20221123")
         self.assertEqual(stat.missing_bar, "")
         self.assertEqual(stat.notes, "")
+        session.close()
+
+    # 测试全量股票下载
+    def test_download_all(self):
+        srv = TsStockDaily()
+        srv.download_all(stockid_test="600016.SH")    # 下载一个日期，一个股票日线
+
+        session = tl.get_session()
+        # 检查一个股票的数据，记录数大于2000
+        record_count = session.query(func.count(OdsTushareDaily.trade_date)).filter(OdsTushareDaily.ts_code == '600016.SH').scalar()
+        self.assertTrue(record_count > 2000)
+        # 检查stat表
+        stat = session.query(OdsDsStat).filter(OdsDsStat.ds_id == 'tushare.daily').one_or_none()
+        self.assertEqual("20001219", stat.start_bar)
         session.close()

@@ -32,6 +32,7 @@ def get_csv_datafeed():
                                    todate=datetime.datetime(2016, 12, 4),
                                    dtformat=('%Y-%m-%d'),
                                    datetime=0,
+                                   close=(3-1),
                                    openinterest=None,      # 指明无此列
                                    )
     return data
@@ -159,10 +160,10 @@ def run():
 
     # 获取数据集合
     # data = get_csv_pd_datafeed()      # 使用pandas读取csv文件
-    # data = get_csv_datafeed()         # 直接读取csv文件
+    data = get_csv_datafeed()         # 直接读取csv文件
     # data = get_csv_pe()               # 直接读取csv文件，加一列自定义列
     # data = get_tushare_data()         # 使用pandas读取tushare在线api
-    data = get_db()                     # 使用pandas读取本地数据库
+    # data = get_db()                     # 使用pandas读取本地数据库
     cerebro.adddata(data)
 
     # Set our desired cash start

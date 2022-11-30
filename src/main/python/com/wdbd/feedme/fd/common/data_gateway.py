@@ -71,7 +71,7 @@ class TushareGateWay:
         3. 每一次的调用，都有日志记录
 
         Args:
-            callback (function): [description]
+            callback (function): Tushare的接口，如gw.api.trade_cal
             dataframe (str) : dataframe or dict的返回值
 
         Returns:
@@ -119,6 +119,32 @@ class TushareGateWay:
         except Exception as err:
             tl.get_logger().error("读取数据单元配置文件时出现问题，Exp={err}".format(err=err))
             return None
+
+    def has_data(self, callback, trade_date: str, *args, **kargs) -> bool:
+        """ 判断某日某交易接口是否已生成数据
+
+        比如判断某日股票日线数据是否就绪，可以使用：
+        res = gw.has_data(api=gw.api.trade_cal, trade_date="20221230")
+        返回True
+
+        Args:
+            callback (function): Tushare的接口，如gw.api.trade_cal
+            trade_date (str): 交易日期，yyyyMMdd格式
+
+        Returns:
+            bool: 是否有数据
+        """
+        logger = tl.get_logger()
+        try:
+            df = callback(trade_date=trade_date, *args, **kargs)
+
+            if df is None or df.shape[0] == 0:
+                return False
+            else:
+                return True
+        except Exception as err:
+            logger.debug(
+                "【Tushare错误】调用出现异常，错误原因:{err}".format(err=str(err)))
 
 
 class BaostockGateWay:

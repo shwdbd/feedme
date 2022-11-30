@@ -208,7 +208,6 @@ class TsStockDaily:
         log.debug("Tushare网关获取{0}条数据".format(df.shape[0]))
 
         # 数据清洗(字段翻译)
-        # TODO 抽出
         df.rename(columns={"open": "p_open",
                            "high": "p_high",
                            "low": "p_low",
@@ -243,21 +242,34 @@ class TsStockDaily:
             session.close()
 
     # 下载全部历史数据
-    def download_all(self):
-        """ 下载全量历史数据 """
+    def download_all(self, stockid_test: str = None) -> None:
+        """ 下载全量历史数据
+
+        Args:
+            stockid_test (str, optional): 单元测试用股票id，如600016.SH. Defaults to None.
+        """
         # 按股票清单，逐一股票下载
         log = get_logger()
 
         try:
             session = get_session()
-            stocks = session.query(OdsTushareStockBasic.ts_code, OdsTushareStockBasic.name).order_by(OdsTushareStockBasic.ts_code.desc()).all()      # 清除表数据
+            # 取得股票清单id列表
+            if stockid_test:
+                log.info("【单元测试】仅下载测试用股票：{0}".format(stockid_test))
+                stocks = [(stockid_test, "测试股票名",)]
+            else:
+                stocks = session.query(OdsTushareStockBasic.ts_code, OdsTushareStockBasic.name).order_by(OdsTushareStockBasic.ts_code.desc()).all()      # 清除表数据
             count_of_stocks = len(stocks)
             log.info("共计有{0}支股票历史日线数据开始下载，请等待较长时间 ...".format(count_of_stocks))
             for idx, stock in enumerate(stocks, start=1):
+                log.debug(stock)
                 log.debug("{idx}/{all} {id}:{name}".format(idx=idx, all=count_of_stocks, id=stock[0], name=stock[1]))
                 self.download_by_stock(ts_code=stock[0])
-                # if idx>5:
-                #     break
+
+            # 统计信息记录
+            first_bar = session.query(sqlalchemy.func.min(OdsTushareDaily.trade_date)).scalar()
+            last_bar = session.query(sqlalchemy.func.max(OdsTushareDaily.trade_date)).scalar()
+            DsStatTool.log(id=self.DS_ID, start_bar=first_bar, end_bar=last_bar)
 
             log.debug("全部下载完成！")
         except Exception as err:
