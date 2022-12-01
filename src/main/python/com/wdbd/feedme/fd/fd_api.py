@@ -31,6 +31,7 @@ def get_eldly_date() -> str:
     return tushare_impl.get_eldly_date()
 
 
+# 判断是否交易日
 def is_trade_date(date: str, exchange="SSE") -> bool:
     """是否交易日
 
@@ -44,6 +45,7 @@ def is_trade_date(date: str, exchange="SSE") -> bool:
     return tushare_impl.is_trade_date(date, exchange)
 
 
+# 判断某日是否已有数据
 def has_data(date: str, item: str = "daily", ds: str = "tushare") -> bool:
     """检查某日是否已有数据
 
@@ -59,3 +61,17 @@ def has_data(date: str, item: str = "daily", ds: str = "tushare") -> bool:
         return tushare_impl.has_data(date, item, ds)
     else:
         return False
+
+
+def get_cal_info() -> dict:
+    """ 查看交易日历信息
+
+    返回一个dict，其内容有：
+    start_date = yyyyMMdd
+    end_date = yyyyMMdd
+    exchange = ['SSE', ...]
+
+    Returns:
+        dict: 交易日历信息字典
+    """
+    return tushare_impl.get_cal_info()

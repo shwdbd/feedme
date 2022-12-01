@@ -8,7 +8,7 @@
 @Contact :   shwangjj@163.com
 @Desc    :   数据接口的Tushare实现
 '''
-from com.wdbd.feedme.fd.common.common import get_session
+from com.wdbd.feedme.fd.common.common import get_session, get_logger
 from com.wdbd.feedme.fd.orm.ods_tables import OdsDsStat, OdsTushareTradeCal, OdsTushareDaily
 # import pandas as pd
 import sqlalchemy
@@ -67,6 +67,7 @@ def is_trade_date(date: str, exchange="SSE") -> bool:
         return False
 
 
+# 检查某日是否已有数据
 def has_data(date: str, item: str = "daily", ds: str = "tushare") -> bool:
     """检查某日是否已有数据
 
@@ -91,5 +92,38 @@ def has_data(date: str, item: str = "daily", ds: str = "tushare") -> bool:
         return False
 
 
+def get_cal_info() -> dict:
+    """ 查看交易日历信息
+
+    返回一个dict，其内容有：
+    start_date = yyyyMMdd
+    end_date = yyyyMMdd
+    exchange = ['SSE', ...]
+
+    Returns:
+        dict: 交易日历信息字典
+    """
+    try:
+        session = get_session()
+        first_bar = session.query(sqlalchemy.func.min(OdsTushareTradeCal.cal_date)).scalar()
+        last_bar = session.query(sqlalchemy.func.max(OdsTushareTradeCal.cal_date)).scalar()
+        exchanges = session.query(sqlalchemy.distinct(OdsTushareTradeCal.exchange)).all()
+        exchange_list = []
+        for record in exchanges:
+            exchange_list.append(record[0])
+        res = {
+            "start_date": first_bar,
+            "end_date": last_bar,
+            "exchange": exchange_list,
+        }
+        return res
+    except Exception as err:
+        get_logger().error("查看交易日历信息，出现异常：" + str(err))
+        return None
+    finally:
+        session.close()
+
+
 # if __name__ == "__main__":
-#     print(has_data("20181121"))
+# #     print(has_data("20181121"))
+#     print(get_cal_info())
