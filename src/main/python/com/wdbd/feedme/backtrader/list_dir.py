@@ -42,7 +42,7 @@ def change_name():
 
 def list_dir():
     """ 列出文件夹下的文件名 """
-    root_dir = r'D:\\000 历史研究 演讲\\'
+    root_dir = r'D:\\000 有声书\\'
 
     files = os.listdir(root_dir)
     for f in files:

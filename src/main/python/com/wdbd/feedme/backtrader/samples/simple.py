@@ -7,6 +7,9 @@
 @Version :   1.0
 @Contact :   shwangjj@163.com
 @Desc    :   最简单的，加载每日K线，然后输出close价格的策略
+
+这里有常见的生成Datafeed对象的方法
+
 '''
 from __future__ import (absolute_import, division, print_function,
                         unicode_literals)
@@ -128,10 +131,12 @@ def get_db(start="20200101", end="20200131"):
     end = "20190105"
     dt_start = datetime.datetime.strptime(start, "%Y%m%d")
     dt_end = datetime.datetime.strptime(end, "%Y%m%d")
-    
+
     # 连接数据库
     conn = sqlite3.connect('C:\\fd_data\\db\\fd.db')
-    df = pd.read_sql("select * from ods_tushare_daily where ts_code='600016.SH' and trade_date <='20190105' and trade_date>='20190101'", con=conn)
+    sql = "select * from ods_tushare_daily where ts_code='{stockid}'".format(stockid=stock_id)
+    sql += " and trade_date <='{start}' and trade_date>='{end}'".format(start=start, end=end)                                                 
+    df = pd.read_sql(sql, con=conn)
     # 将日期列，设置成index
     df.index = pd.to_datetime(df.trade_date, format='%Y%m%d')
     print(df.head())
@@ -160,9 +165,9 @@ def run():
 
     # 获取数据集合
     # data = get_csv_pd_datafeed()      # 使用pandas读取csv文件
-    data = get_csv_datafeed()         # 直接读取csv文件
+    # data = get_csv_datafeed()         # 直接读取csv文件
     # data = get_csv_pe()               # 直接读取csv文件，加一列自定义列
-    # data = get_tushare_data()         # 使用pandas读取tushare在线api
+    data = get_tushare_data()         # 使用pandas读取tushare在线api
     # data = get_db()                     # 使用pandas读取本地数据库
     cerebro.adddata(data)
 

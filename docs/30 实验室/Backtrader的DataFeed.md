@@ -6,25 +6,25 @@
 
 Bt框架提供了很多现成的Datafeed（参考：https://backtrader.com/docu/dataautoref/），其中可分两大类：
 
-一、基于csv文件的
+第一类、基于csv文件的
 
-二、基于pandas的。
+第二类、基于pandas的。
 
 ## 路线一：基于csv文件
 
-可以直接使用bt.feeds.GenericCSVData读取csv文件。
+基于csv文件的数据，可以直接使用bt.feeds.GenericCSVData类实现从csv文件中解析得到Datafeed。
 
-调用者可以根据自己文件的情况，调整参数以取得正确的Datafeed。可以调整的参数，主要是“格式参数”和“列参数”。默认的参数如下：
+调用者可以根据自己文件的情况，调整参数以取得正确的Datafeed。GenericCSVData可以调整的参数，主要有“格式参数”和“列参数”两类。
 
-格式参数为全局参数，有：
+**格式参数**为全局参数，即描述整个数据集情况的参数，有：
 
-| 参数      | 说明               | 默认值            |
-| --------- | ------------------ | ----------------- |
-| nullvalue |                    | float('NaN')      |
-| dtformat  | 文件中日期列的格式 | %Y-%m-%d %H:%M:%S |
-| tmformat  | 文件中时间列的格式 | %H:%M:%S          |
+| 参数      | 说明                 | 默认值            |
+| --------- | -------------------- | ----------------- |
+| nullvalue | 如何处理数据源中空值 | float('NaN')      |
+| dtformat  | 文件中日期列的格式   | %Y-%m-%d %H:%M:%S |
+| tmformat  | 文件中时间列的格式   | %H:%M:%S          |
 
-列参数为定义每个列的情况，用户可以指定每个列所处的位置或字段信息。
+**列参数**为定义每个列的情况，用户可以指定每个列所处的位置或字段信息。
 
 例如：('open', 1) 表示open列在文件中第2列（从第0列开始计算），其参数也可以是str，表明所处的列名，如('open', “open”)
 
@@ -112,14 +112,17 @@ class GenericCSV_PE(bt.feeds.GenericCSVData):
 
 ### 基于本地csv文件
 
+Pandas可以使用read_csv读取csv文件，然后通过PandasData构建DataFeed。
 
+相同的，需要指明各列的位置或者列名。下面是代码示例：
 
 ```python
 def get_csv_pd_datafeed():
-    # 使用PandasData对象读取csv文件
+    """ 使用PandasData对象读取csv文件 """
     # 文件路径
     modpath = os.path.dirname(os.path.abspath(sys.argv[0]))
     datapath = os.path.join(modpath, r"dfqc.csv")
+    # 构建数据集
     dataframe = pd.read_csv(datapath, index_col=0, parse_dates=True)
     # Create a Data Feed
     data = bt.feeds.PandasData(dataname=dataframe,
@@ -133,15 +136,15 @@ def get_csv_pd_datafeed():
     return data
 ```
 
-
-
-
-
-
-
-### 
-
 ### Tushare API
+
+Pandas可以使用read_csv读取csv文件，然后通过PandasData构建DataFeed。
+
+相同的，需要指明各列的位置或者列名。下面是代码示例：
+
+
+
+
 
 ### 基于本地数据库
 
@@ -150,6 +153,8 @@ pd.
 
 
 ## 附件1 CSV示例文件
+
+dfqc.csv：
 
 ```csv
 datetime,open,close,high,low,volume,pe
@@ -161,20 +166,3 @@ datetime,open,close,high,low,volume,pe
 2016-12-08,2.379,2.38,2.388,2.375,230304569.0,6
 2016-12-09,2.378,2.413,2.421,2.372,362651828.0,7
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
