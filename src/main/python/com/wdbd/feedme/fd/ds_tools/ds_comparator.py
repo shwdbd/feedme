@@ -17,8 +17,9 @@
 
 '''
 from com.wdbd.feedme.fd.common.common import get_logger, get_session
-from com.wdbd.feedme.fd.orm.ods_tables import OdsAkshareTradeCal, OdsTushareTradeCal
+from com.wdbd.feedme.fd.orm.ods_tables import OdsAkshareTradeCal, OdsTushareTradeCal, OdsTushareStockBasic, OdsAkshareStock
 import sqlalchemy
+from sqlalchemy import func
 
 
 # 返回空结果
@@ -30,6 +31,7 @@ def get_result():
     }
 
 
+# 比较Tushare和Akshare数据源的 交易日历数据
 def compare_cal_ak_ts():
     """ 比较Tushare和Akshare数据源的 交易日历数据 """
     # 规则：
@@ -38,7 +40,6 @@ def compare_cal_ak_ts():
     # 3. 检查Ts中非交易日，在Ak中是否存在
     # 4. 检查Ts中交易日，是否在Ak中不存在
     # END
-    # TODO 待实现
     log = get_logger()
     res = get_result()
     try:
@@ -94,9 +95,70 @@ def compare_cal_ak_ts():
     finally:
         session.close()
 
-    return get_result()
 
+# 比较Tushare和Akshare数据源的 股票清单数据
+def compare_stocklist_ak_ts():
+    """ 比较Tushare和Akshare数据源的 股票清单数据 """
+    # 规则：
+    # 1. 先比较股票数量
+    # 2. 检查Ts中股票，是否都在Ak存在
+    # 3. 检查Ak中股票，是否都在Ts存在
+    # END
+    log = get_logger()
+    res = get_result()
+    try:
+        session = get_session()
+
+        # 比较股票数量
+        is_count_same = False
+        count_tushare = session.query(func.count(OdsTushareStockBasic.ts_code)).one_or_none()
+        count_akshare = session.query(func.count(OdsAkshareStock.stock_id)).one_or_none()
+        if count_tushare == count_akshare:
+            is_count_same = True
+        else:
+            is_count_same = False
+            res["summary"] += "股票数量不同;"
+            error_msg = "股票数量不同。Tushare股票{0}支，Akshare股票{1}支".format(
+                count_tushare[0], count_akshare[0])
+            res["msg"].append(error_msg)
+
+        is_lack = True
+        # 找出Ts有，Ak没有的股票
+        subquery_ak = session.query(OdsAkshareStock.stock_id)
+        diff_query = session.query(OdsTushareStockBasic.ts_code, OdsTushareStockBasic.name).filter(OdsTushareStockBasic.symbol.notin_(subquery_ak)).all()
+        if len(diff_query) > 0:
+            is_lack = False
+            res["summary"] += "Tushare有{0}支股票未在Akshare中;".format(len(diff_query))
+            for record in diff_query:
+                error_msg = "【Akshare缺】{id} {name}".format(id=record[0], name=record[1])
+                res["msg"].append(error_msg)
+        # 找出Ak有，Ts没有的股票
+        subquery_ts = session.query(OdsTushareStockBasic.symbol)
+        diff_query = session.query(OdsAkshareStock.stock_id, OdsAkshareStock.name).filter(OdsAkshareStock.stock_id.notin_(subquery_ts)).all()
+        if len(diff_query) > 0:
+            is_lack = False
+            res["summary"] += "Akshare有{0}支股票未在Tushare中;".format(len(diff_query))
+            for record in diff_query:
+                error_msg = "【Tushare缺】{id} {name}".format(id=record[0], name=record[1])
+                res["msg"].append(error_msg)
+
+        # 汇总结果
+        res["result"] = is_count_same & is_lack
+
+        return res
+    except Exception as err:
+        err_msg = "比较Tushare和Akshare数据源时出现异常，SQL异常:" + str(err)
+        log.error(err_msg)
+        session.rollback()
+        return res
+    finally:
+        session.close()
+
+
+# if __name__ == "__main__":
+#     res = compare_cal_ak_ts()
+#     print(res)
 
 if __name__ == "__main__":
-    res = compare_cal_ak_ts()
+    res = compare_stocklist_ak_ts()
     print(res)

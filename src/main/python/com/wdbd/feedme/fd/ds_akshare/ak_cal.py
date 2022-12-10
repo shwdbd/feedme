@@ -6,7 +6,7 @@
 @Author  :   Jeffrey Wang
 @Version :   1.0
 @Contact :   shwangjj@163.com
-@Desc    :   日历数据下载
+@Desc    :   Akshare日历数据下载
 '''
 import akshare as ak
 from com.wdbd.feedme.fd.common.common import get_logger, get_session, records2objlist
@@ -62,7 +62,7 @@ class AkTradeCal:
             return {"result": False, "msg": [err_msg]}
 
 
-if __name__ == "__main__":
-    srv = AkTradeCal()
-    res = srv.download()
-    print(res)
+# if __name__ == "__main__":
+#     srv = AkTradeCal()
+#     res = srv.download()
+#     print(res)
