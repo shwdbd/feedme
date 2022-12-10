@@ -10,6 +10,7 @@
 '''
 from com.wdbd.feedme.fd.common.common import Base
 from sqlalchemy import Column, String, DECIMAL
+from sqlalchemy.ext.hybrid import hybrid_property
 
 
 class OdsTushareTradeCal(Base):
@@ -24,6 +25,17 @@ class OdsTushareTradeCal(Base):
 
     def __repr__(self) -> str:
         return "Tushare交易日历[{0}, {1}] ".format(self.exchange, self.cal_date)
+
+
+class OdsAkshareTradeCal(Base):
+    """ Akshare 交易日历 """
+
+    __tablename__ = 'ods_akshare_tool_trade_date_hist_sina'
+
+    trade_date = Column(String(20), primary_key=True)
+
+    def __repr__(self) -> str:
+        return "Akshare 交易日历 [{0}] ".format(self.trade_date)
 
 
 class OdsDsStat(Base):

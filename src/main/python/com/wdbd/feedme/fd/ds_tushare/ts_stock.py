@@ -292,3 +292,8 @@ class TsStockDaily:
 #     srv = TsStockDaily()
 #     res = srv.download_by_stock("600016.SH")
 #     print(res)
+
+if __name__ == "__main__":
+    srv = TsTradeCal()
+    res = srv.download_all()
+    print(res)
