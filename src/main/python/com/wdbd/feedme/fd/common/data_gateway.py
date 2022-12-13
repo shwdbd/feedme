@@ -40,6 +40,8 @@ DATA_SOURCES = {
     "tushare.daily": "tushareA股日线行情（未复权）",
     "akshare.cal": "Akshare交易日历",
     "akshare.cnstock_list": "AkshareA股股票清单",
+    "akshare.cnstock_daily_163": "AkshareA股日线 网易",
+    "akshare.cnstock_daily_em": "AkshareA股日线 东财",
 }
 
 

@@ -70,6 +70,9 @@ class TestTsStockList(unittest.TestCase):
         # 检查表中记录数量
         record_count = session.query(func.count(OdsTushareStockBasic.ts_code)).scalar()
         self.assertTrue(record_count > 4000)   # 股票个数4000以上
+        # 检查是否有 非上市股票（应该有）
+        unmarket_count = session.query(func.count(OdsTushareStockBasic.ts_code)).filter(OdsTushareStockBasic.list_status != 'L').scalar()
+        self.assertGreater(unmarket_count, 0)
         # 检查统计表信息
         stat = session.query(OdsDsStat).filter(OdsDsStat.ds_id == 'tushare.stock_basic').one_or_none()
         self.assertIsNotNone(stat)

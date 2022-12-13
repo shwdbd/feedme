@@ -102,7 +102,11 @@ class TsStockList:
         log.debug("下载更新Tushare A股票清单全量数据")
 
         gw = TushareGateWay()
-        df = gw.call(gw.api.stock_basic, fields=FIELDS["stock_basic"])
+        list_status = ["L", "D", "P"]
+        df_list = []
+        for status in list_status:
+            df_list.append(gw.call(gw.api.stock_basic, fields=FIELDS["stock_basic"], list_status=status))
+        df = pd.concat(df_list)
         log.debug("Tushare网关获取{0}条数据".format(df.shape[0]))
         # 数据清洗
         obj_list = records2objlist(df, OdsTushareStockBasic)

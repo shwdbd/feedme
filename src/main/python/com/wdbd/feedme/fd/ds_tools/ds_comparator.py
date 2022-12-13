@@ -16,16 +16,75 @@
 }
 
 '''
-from com.wdbd.feedme.fd.common.common import get_logger, get_session
+from com.wdbd.feedme.fd.common.common import get_logger, get_session, now
 from com.wdbd.feedme.fd.orm.ods_tables import OdsAkshareTradeCal, OdsTushareTradeCal, OdsTushareStockBasic, OdsAkshareStock
 import sqlalchemy
 from sqlalchemy import func
 
 
+# 执行比对
+def do_compare(export_file: str = "export/数据比对结果.txt") -> None:
+    """执行数据比对
+
+    Args:
+        export_file (str): 执行文件
+
+    Returns:
+        _type_: _description_
+    """
+    ENCODING = "utf-8"
+
+    res_list = []
+
+    # 核对日历
+    res_list.append(compare_cal_ak_ts())
+    # 股票清单
+    res_list.append(compare_stocklist_ak_ts())
+
+    _write_text_file(results=res_list, export_file=export_file, encoding=ENCODING)
+
+
+def _write_text_file(results: list, export_file: str, encoding: str = "utf-8") -> None:
+    """将核对结果，写入文本文件
+
+    Args:
+        results (list): 核对结果列表
+        export_file (str): 输出文件路径
+    Returns:
+        _type_: _description_
+    """
+    log = get_logger()
+    log.debug("结果导出到文件")
+    with open(export_file, mode="w+", encoding=encoding) as f:
+        f.writelines("核对时间：{0}\n".format(now()))
+        count_success = 0
+        count_fail = 0
+        for r in results:
+            if r["result"]:
+                count_success += 1
+            else:
+                count_fail += 1
+        f.writelines("核对项目：共核对{c}个项目，其中通过{s}项，有{f}项目存在问题。\n".format(c=len(results), s=count_success, f=count_fail))
+        # 逐一项目输出
+        for idx, res in enumerate(results, start=1):
+            f.writelines("-" * 80 + "\n")
+            f.writelines("【项目{id}/{count}】{name}\n".format(id=idx, count=len(results), name=res["name"]))
+            f.writelines("核对结果：{r}\n".format(r=res["result"]))
+            f.writelines("\n概要：\n")
+            f.writelines("{summary}\n".format(summary=res["summary"]))
+            f.writelines("\n详细信息({0})：\n".format(len(res["msg"])))
+            for idx, item in enumerate(res["msg"], start=1):
+                f.writelines("<{no}> {m}\n".format(no=idx, m=item))
+            f.writelines("\n")
+        f.writelines("END")
+    log.debug("结果导出完毕")
+
+
 # 返回空结果
-def get_result():
+def get_result(name: str = None):
     return {
         "result": True,
+        "name": name,
         "summary": "",
         "msg": []
     }
@@ -41,7 +100,7 @@ def compare_cal_ak_ts():
     # 4. 检查Ts中交易日，是否在Ak中不存在
     # END
     log = get_logger()
-    res = get_result()
+    res = get_result("Ts、Ak 交易日历比对")
     try:
         session = get_session()
 
@@ -105,7 +164,7 @@ def compare_stocklist_ak_ts():
     # 3. 检查Ak中股票，是否都在Ts存在
     # END
     log = get_logger()
-    res = get_result()
+    res = get_result("Ts、Ak 股票清单比对")
     try:
         session = get_session()
 
@@ -159,6 +218,22 @@ def compare_stocklist_ak_ts():
 #     res = compare_cal_ak_ts()
 #     print(res)
 
+# if __name__ == "__main__":
+#     res = compare_stocklist_ak_ts()
+#     print(res)
+
 if __name__ == "__main__":
-    res = compare_stocklist_ak_ts()
-    print(res)
+    # r1 = get_result("项目A")
+    # r1["result"] = False
+    # r1["summary"] = "概要A"
+    # r1["msg"].append("第1行")
+    # r1["msg"].append("第2行")
+    # r2 = get_result("项目B")
+    # r2["result"] = True
+    # r2["summary"] = "概要B"
+    # r2["msg"].append("第1行")
+    # r2["msg"].append("第2行")
+    # res_list = [r1, r2]
+    # _write_text_file(res_list, export_file="export//核对结果.txt")
+    
+    do_compare()

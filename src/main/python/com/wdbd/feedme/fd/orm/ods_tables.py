@@ -99,6 +99,51 @@ class OdsTushareDaily(Base):
         return "Tushare A股日线[{0}, {1}] ".format(self.ts_code, self.trade_date)
 
 
+class OdsAkshareStockDaily_163(Base):
+    """ akshare A股日线行情（网易，未复权） """
+
+    __tablename__ = 'ods_akshare_stock_zh_a_hist_163'
+
+    trade_date = Column(String(50), primary_key=True)
+    symbol = Column(String(50), primary_key=True)
+    p_close = Column(DECIMAL(10, 2))
+    p_high = Column(DECIMAL(10, 2))
+    p_low = Column(DECIMAL(10, 2))
+    p_open = Column(DECIMAL(10, 2))
+    pre_close = Column(DECIMAL(10, 2))
+    pct_change = Column(DECIMAL(10, 2))
+    turnover_rat = Column(DECIMAL(10, 2))
+    volume_h = Column(DECIMAL(10, 2))
+    volume = Column(DECIMAL(10, 2))
+    tmv = Column(DECIMAL(10, 2))
+    cmv = Column(DECIMAL(10, 2))
+
+    def __repr__(self) -> str:
+        return "Akshare A股日线[{0}, {1}] ".format(self.symbol, self.trade_date)
+
+
+class OdsAkshareStockDaily_EM(Base):
+    """ akshare A股日线行情（东方财富，未复权） """
+
+    __tablename__ = 'ods_akshare_stock_stock_zh_a_hist'
+
+    trade_date = Column(String(50), primary_key=True)
+    symbol = Column(String(50), primary_key=True)
+    p_open = Column(DECIMAL(10, 2))
+    p_close = Column(DECIMAL(10, 2))
+    p_high = Column(DECIMAL(10, 2))
+    p_low = Column(DECIMAL(10, 2))
+    volume_h = Column(DECIMAL(10, 2))
+    volume = Column(DECIMAL(10, 2))
+    amp = Column(DECIMAL(10, 2))
+    pct_change = Column(DECIMAL(10, 2))
+    p_change = Column(DECIMAL(10, 2))
+    turnover_rat = Column(DECIMAL(10, 2))
+
+    def __repr__(self) -> str:
+        return "Akshare A股日线[{0}, {1}] ".format(self.symbol, self.trade_date)
+
+
 class OdsAkshareStock(Base):
     """ Akshare股票清单表 """
 
