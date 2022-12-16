@@ -40,6 +40,9 @@ class TestAkTradeCal(unittest.TestCase):
         # 检查表中记录数量
         record_count = session.query(func.count(OdsAkshareTradeCal.trade_date)).scalar()
         self.assertEqual(7828, record_count)
+        # 检查 表中内容
+        trade_date = session.query(OdsAkshareTradeCal.trade_date).filter(OdsAkshareTradeCal.trade_date == '20221216').one_or_none()
+        self.assertEqual("20221216", trade_date[0])
         # 检查统计表信息
         stat = session.query(OdsDsStat).filter(OdsDsStat.ds_id == 'akshare.cal').one_or_none()
         self.assertIsNotNone(stat)

@@ -9,7 +9,7 @@
 @Desc    :   Akshare日历数据下载
 '''
 import akshare as ak
-from com.wdbd.feedme.fd.common.common import get_logger, get_session, records2objlist
+from com.wdbd.feedme.fd.common.common import get_logger, get_session, records2objlist, d2dbstr
 from com.wdbd.feedme.fd.orm.ods_tables import OdsAkshareTradeCal
 import sqlalchemy
 from com.wdbd.feedme.fd.common.data_gateway import DsStatTool
@@ -32,6 +32,10 @@ class AkTradeCal:
                 err_msg = "交易日历接口返回空数据，下载失败！"
                 log.error(err_msg)
                 return {"result": False, "msg": [err_msg]}
+            # 数据清理：
+            df["trade_date"] = df["trade_date"].apply(str)
+            df["trade_date"] = df["trade_date"].apply(d2dbstr)
+            # 转成Object
             obj_list = records2objlist(df, OdsAkshareTradeCal)
 
             # 如果有数据，则del and insert数据库
@@ -62,7 +66,7 @@ class AkTradeCal:
             return {"result": False, "msg": [err_msg]}
 
 
-# if __name__ == "__main__":
-#     srv = AkTradeCal()
-#     res = srv.download()
-#     print(res)
+if __name__ == "__main__":
+    srv = AkTradeCal()
+    res = srv.download()
+    print(res)

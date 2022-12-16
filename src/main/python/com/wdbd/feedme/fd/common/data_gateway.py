@@ -353,6 +353,42 @@ class EFinanceGateWay:
             return None
 
 
+class AkshareGateWay:
+    """ Akshare数据网关 """
+
+    def __init__(self):
+        pass
+
+    def symbol_2_tscode(self, symbol) -> str:
+        """将sh600016格式转为600016.SH格式
+
+        Args:
+            symbol (_type_): _description_
+
+        Returns:
+            str: _description_
+        """
+        if not symbol or len(symbol) < 8:
+            return symbol
+
+        return "{s}.{exchange}".format(s=symbol[2:], exchange=symbol[:2].upper())
+
+    def tscode_2_symbol(self, tscode) -> str:
+        """将600016.SH格式转为600016格式
+
+        Args:
+            symbol (_type_): _description_
+
+        Returns:
+            str: _description_
+        """
+        if not tscode or len(tscode) < 9:
+            return tscode
+
+        return "{s}".format(s=tscode[:6])
+        # return "{exchange}{s}".format(s=tscode[:6], exchange=tscode[-2:].lower())
+
+
 class DsStatTool:
     """ 数据源统计表的工具 """
 
@@ -405,9 +441,9 @@ class DsStatTool:
             session.close()
 
 
-if __name__ == "__main__":
-    res = DsStatTool.log(id="tushare.trade_cal", end_bar="20001211", notes="xxx")
-    print(res)
+# if __name__ == "__main__":
+#     res = DsStatTool.log(id="tushare.trade_cal", end_bar="20001211", notes="xxx")
+#     print(res)
 
 # if __name__ == "__main__":
 #     gw = EFinanceGateWay()
@@ -462,3 +498,10 @@ if __name__ == "__main__":
 #     df = gw.call(callback=bs.query_stock_basic)
 #     print(df)
 #     print(df.shape[0])
+
+if __name__ == "__main__":
+    gw = AkshareGateWay()
+    res = gw.symbol_2_tscode("sh600016")
+    print(res)
+    res = gw.tscode_2_symbol("600016.SH")
+    print(res)

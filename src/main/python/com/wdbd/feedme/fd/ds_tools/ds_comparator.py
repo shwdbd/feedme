@@ -17,7 +17,7 @@
 
 '''
 from com.wdbd.feedme.fd.common.common import get_logger, get_session, now
-from com.wdbd.feedme.fd.orm.ods_tables import OdsAkshareTradeCal, OdsTushareTradeCal, OdsTushareStockBasic, OdsAkshareStock
+from com.wdbd.feedme.fd.orm.ods_tables import OdsAkshareTradeCal, OdsTushareTradeCal, OdsTushareStockBasic, OdsAkshareStock, OdsAkshareStockDaily_EM, OdsTushareDaily
 import sqlalchemy
 from sqlalchemy import func
 
@@ -214,6 +214,94 @@ def compare_stocklist_ak_ts():
         session.close()
 
 
+# 比较Tushare和Akshare数据源的 股票日线数据
+def compare_stock_daily_ak_ts():
+    """比较Tushare和Akshare数据源的 股票日线数据
+    """
+    # 规则：
+    # 1. 查看Ts中哪些交易日在AK中没有
+    # 2. 查看Ak中哪些交易日在Ts中没有
+    # 3. 找出Ts、Ak日期交集
+    # 4. 顺序读取交集日期，同一日期逐个股票Ts与Ak进行对比
+    # END
+    log = get_logger()
+    res = get_result("Ts、Ak 股票清单比对")
+    try:
+        session = get_session()
+
+        # 查看Ts中哪些交易日在AK中没有
+        is_count_same = False
+        subquery_ts = session.query(OdsTushareDaily.trade_date)
+        ts_lack_dates = session.query(OdsAkshareStockDaily_EM.trade_date).filter(OdsAkshareStockDaily_EM.trade_date.notin_(subquery_ts)).distinct().all()
+        print(ts_lack_dates)
+        
+        # 查看Ak中哪些交易日在Ts中没有
+        subquery_ak = session.query(OdsAkshareStockDaily_EM.trade_date)
+        ak_lack_dates = session.query(OdsTushareDaily.trade_date).filter(OdsTushareDaily.trade_date.notin_(subquery_ak)).distinct().all()
+        print(ak_lack_dates)
+        
+        # FIXME 两个数据集，格式不一样问题
+        # 找出Ts、Ak日期交集
+        # subquery_ak = session.query(OdsAkshareStockDaily_EM.trade_date).distinct()
+        # dates = session.query(OdsTushareDaily.trade_date).filter(OdsTushareDaily.trade_date.in_(subquery_ak)).distinct().all()
+        # print(dates)
+        dates = ['20221209']
+        
+        for day in dates:
+            print(day)
+            ts_stocks = session.query(OdsTushareDaily).filter(OdsTushareDaily.trade_date ==  day).all()
+            print(ts_stocks)
+            # for stock in tss:
+            #    find in aks
+            #    比较，结果入msg
+        
+        # if count_tushare == count_akshare:
+        #     is_count_same = True
+        # else:
+        #     is_count_same = False
+        #     res["summary"] += "股票数量不同;"
+        #     error_msg = "股票数量不同。Tushare股票{0}支，Akshare股票{1}支".format(
+        #         count_tushare[0], count_akshare[0])
+        #     res["msg"].append(error_msg)
+
+        # is_lack = True
+        # # 找出Ts有，Ak没有的股票
+        # subquery_ak = session.query(OdsAkshareStock.stock_id)
+        # diff_query = session.query(OdsTushareStockBasic.ts_code, OdsTushareStockBasic.name).filter(OdsTushareStockBasic.symbol.notin_(subquery_ak)).all()
+        # if len(diff_query) > 0:
+        #     is_lack = False
+        #     res["summary"] += "Tushare有{0}支股票未在Akshare中;".format(len(diff_query))
+        #     for record in diff_query:
+        #         error_msg = "【Akshare缺】{id} {name}".format(id=record[0], name=record[1])
+        #         res["msg"].append(error_msg)
+        # # 找出Ak有，Ts没有的股票
+        # subquery_ts = session.query(OdsTushareStockBasic.symbol)
+        # diff_query = session.query(OdsAkshareStock.stock_id, OdsAkshareStock.name).filter(OdsAkshareStock.stock_id.notin_(subquery_ts)).all()
+        # if len(diff_query) > 0:
+        #     is_lack = False
+        #     res["summary"] += "Akshare有{0}支股票未在Tushare中;".format(len(diff_query))
+        #     for record in diff_query:
+        #         error_msg = "【Tushare缺】{id} {name}".format(id=record[0], name=record[1])
+        #         res["msg"].append(error_msg)
+
+        # # 汇总结果
+        # res["result"] = is_count_same & is_lack
+
+        return res
+    except Exception as err:
+        err_msg = "比较Tushare和Akshare数据源时出现异常，SQL异常:" + str(err)
+        log.error(err_msg)
+        session.rollback()
+        return res
+    finally:
+        session.close()
+
+
+
+if __name__ == "__main__":
+    res = compare_stock_daily_ak_ts()
+    print(res)
+
 # if __name__ == "__main__":
 #     res = compare_cal_ak_ts()
 #     print(res)
@@ -222,18 +310,17 @@ def compare_stocklist_ak_ts():
 #     res = compare_stocklist_ak_ts()
 #     print(res)
 
-if __name__ == "__main__":
-    # r1 = get_result("项目A")
-    # r1["result"] = False
-    # r1["summary"] = "概要A"
-    # r1["msg"].append("第1行")
-    # r1["msg"].append("第2行")
-    # r2 = get_result("项目B")
-    # r2["result"] = True
-    # r2["summary"] = "概要B"
-    # r2["msg"].append("第1行")
-    # r2["msg"].append("第2行")
-    # res_list = [r1, r2]
-    # _write_text_file(res_list, export_file="export//核对结果.txt")
-    
-    do_compare()
+# if __name__ == "__main__":
+#     # r1 = get_result("项目A")
+#     # r1["result"] = False
+#     # r1["summary"] = "概要A"
+#     # r1["msg"].append("第1行")
+#     # r1["msg"].append("第2行")
+#     # r2 = get_result("项目B")
+#     # r2["result"] = True
+#     # r2["summary"] = "概要B"
+#     # r2["msg"].append("第1行")
+#     # r2["msg"].append("第2行")
+#     # res_list = [r1, r2]
+#     # _write_text_file(res_list, export_file="export//核对结果.txt")
+#     do_compare()

@@ -258,7 +258,7 @@ def now():
 
 
 def d2dbstr(view_str: str) -> str:
-    """ 日期视图格式转数据库格式 """
+    """ 日期视图格式yyyy-MM-dd转数据库格式yyyyMMdd """
     if not view_str:
         return ""
     dt = datetime.datetime.strptime(view_str, DATE_VIEW_FORMAT)
@@ -266,7 +266,7 @@ def d2dbstr(view_str: str) -> str:
 
 
 def d2viewstr(db_str: str) -> str:
-    """ 日期数据库格式转视图格式 """
+    """ 日期数据库格式yyyyMMdd转视图格式yyyy-MM-dd """
     if not db_str:
         return ""
     dt = datetime.datetime.strptime(db_str, DATE_FORMAT)
