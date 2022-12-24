@@ -146,7 +146,7 @@ class AboutWin(tk.Toplevel):
     def __init__(self, parent):
         tk.Toplevel.__init__(self, parent)
         self.set_window()
-        self.add_version()
+        self.add_tk()
 
     def set_window(self):
         self.title = "关于"
@@ -156,14 +156,23 @@ class AboutWin(tk.Toplevel):
                       win_width)/2), int((self.winfo_screenheight()-win_height)/2)))     # 窗口大小
         self.resizable(False, False)
 
-    def add_version(self):
+    def get_db_version(self, path):
+        """ 判断数据库是生产环境，还是测试环境 """
+        if path.find("fd.db") > 0:
+            return "生产环境"
+        else:
+            return "开发测试环境"
+
+    def add_tk(self):
         """ 添加部件 """
         tk.Label(self, text="").pack()
         tk.Label(self, text="Feedme {ver}".format(
             ver=get_cfg("feedme", "version"))).pack()
         tk.Label(self, text="").pack()
+        # tk.Label(self, text="数据库配置文件地址：\n{path}".format(
+        #     path=get_cfg("sqlite3", "db.path"))).pack()
         tk.Label(self, text="数据库配置文件地址：\n{path}".format(
-            path=get_cfg("sqlite3", "db.path"))).pack()
+            path=self.get_db_version(get_cfg("sqlite3", "db.path")))).pack()
 
 
 # 当日数据下载窗口

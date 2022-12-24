@@ -20,6 +20,7 @@ from com.wdbd.feedme.fd.common.common import get_logger, get_session, now
 from com.wdbd.feedme.fd.orm.ods_tables import OdsAkshareTradeCal, OdsTushareTradeCal, OdsTushareStockBasic, OdsAkshareStock, OdsAkshareStockDaily_EM, OdsTushareDaily
 import sqlalchemy
 from sqlalchemy import func
+import com.wdbd.feedme.fd.fd_api as fd_api
 
 
 # 执行比对
@@ -224,78 +225,74 @@ def compare_stock_daily_ak_ts():
     # 3. 找出Ts、Ak日期交集
     # 4. 顺序读取交集日期，同一日期逐个股票Ts与Ak进行对比
     # END
+    GAP = 0.01      # 允许误差
     log = get_logger()
-    res = get_result("Ts、Ak 股票清单比对")
+    res = get_result("Ts、Ak 股票日线数据比对")
     try:
         session = get_session()
 
         # 查看Ts中哪些交易日在AK中没有
-        is_count_same = False
         subquery_ts = session.query(OdsTushareDaily.trade_date)
-        ts_lack_dates = session.query(OdsAkshareStockDaily_EM.trade_date).filter(OdsAkshareStockDaily_EM.trade_date.notin_(subquery_ts)).distinct().all()
-        print(ts_lack_dates)
-        
+        records = session.query(OdsAkshareStockDaily_EM.trade_date).filter(OdsAkshareStockDaily_EM.trade_date.notin_(subquery_ts)).distinct().all()
+        dates_notin_ak = []
+        for record in records:
+            dates_notin_ak.append(record[0])
+        if len(dates_notin_ak) > 0:
+            res["msg"].append("Tushare中有{c}个交易日数据在Akshare中没有，他们是：{l}".format(c=len(dates_notin_ak), l=dates_notin_ak))
+
         # 查看Ak中哪些交易日在Ts中没有
         subquery_ak = session.query(OdsAkshareStockDaily_EM.trade_date)
-        ak_lack_dates = session.query(OdsTushareDaily.trade_date).filter(OdsTushareDaily.trade_date.notin_(subquery_ak)).distinct().all()
-        print(ak_lack_dates)
-        
-        # FIXME 两个数据集，格式不一样问题
+        records = session.query(OdsTushareDaily.trade_date).filter(OdsTushareDaily.trade_date.notin_(subquery_ak)).distinct().all()
+        dates_notin_ts = []
+        for record in records:
+            dates_notin_ts.append(record[0])
+        if len(dates_notin_ts) > 0:
+            res["msg"].append("Akshare中有{c}个交易日数据在Tushare中没有，他们是：{l}".format(c=len(dates_notin_ts), l=dates_notin_ts))
+
         # 找出Ts、Ak日期交集
-        # subquery_ak = session.query(OdsAkshareStockDaily_EM.trade_date).distinct()
-        # dates = session.query(OdsTushareDaily.trade_date).filter(OdsTushareDaily.trade_date.in_(subquery_ak)).distinct().all()
+        subquery_ak = session.query(OdsAkshareStockDaily_EM.trade_date).distinct()
+        dates = session.query(OdsTushareDaily.trade_date).filter(OdsTushareDaily.trade_date.in_(subquery_ak)).distinct().all()
         # print(dates)
-        dates = ['20221209']
-        
+        stock_list = fd_api.get_stockid()
         for day in dates:
-            print(day)
-            ts_stocks = session.query(OdsTushareDaily).filter(OdsTushareDaily.trade_date ==  day).all()
-            print(ts_stocks)
-            # for stock in tss:
-            #    find in aks
-            #    比较，结果入msg
-        
-        # if count_tushare == count_akshare:
-        #     is_count_same = True
-        # else:
-        #     is_count_same = False
-        #     res["summary"] += "股票数量不同;"
-        #     error_msg = "股票数量不同。Tushare股票{0}支，Akshare股票{1}支".format(
-        #         count_tushare[0], count_akshare[0])
-        #     res["msg"].append(error_msg)
+            day = day[0]    # 日期
+            # 逐一股票比较：
+            for stock_id in stock_list:
+                # print(stock_id)
+                ts_d = session.query(OdsTushareDaily).filter(OdsTushareDaily.trade_date == day).filter(OdsTushareDaily.ts_code == stock_id).one_or_none()
+                ak_d = session.query(OdsAkshareStockDaily_EM).filter(OdsAkshareStockDaily_EM.trade_date == day).filter(OdsAkshareStockDaily_EM.symbol == stock_id).one_or_none()
+                if ts_d is None:
+                    res["result"] = False
+                    res["msg"].append("日期{d}, 股票{s}, Tushare日线数据缺失".format(d=day, s=stock_id))
+                    continue
+                if ak_d is None:
+                    res["result"] = False
+                    res["msg"].append("日期{d}, 股票{s}, Akshare日线数据缺失".format(d=day, s=stock_id))
+                    continue
 
-        # is_lack = True
-        # # 找出Ts有，Ak没有的股票
-        # subquery_ak = session.query(OdsAkshareStock.stock_id)
-        # diff_query = session.query(OdsTushareStockBasic.ts_code, OdsTushareStockBasic.name).filter(OdsTushareStockBasic.symbol.notin_(subquery_ak)).all()
-        # if len(diff_query) > 0:
-        #     is_lack = False
-        #     res["summary"] += "Tushare有{0}支股票未在Akshare中;".format(len(diff_query))
-        #     for record in diff_query:
-        #         error_msg = "【Akshare缺】{id} {name}".format(id=record[0], name=record[1])
-        #         res["msg"].append(error_msg)
-        # # 找出Ak有，Ts没有的股票
-        # subquery_ts = session.query(OdsTushareStockBasic.symbol)
-        # diff_query = session.query(OdsAkshareStock.stock_id, OdsAkshareStock.name).filter(OdsAkshareStock.stock_id.notin_(subquery_ts)).all()
-        # if len(diff_query) > 0:
-        #     is_lack = False
-        #     res["summary"] += "Akshare有{0}支股票未在Tushare中;".format(len(diff_query))
-        #     for record in diff_query:
-        #         error_msg = "【Tushare缺】{id} {name}".format(id=record[0], name=record[1])
-        #         res["msg"].append(error_msg)
-
-        # # 汇总结果
-        # res["result"] = is_count_same & is_lack
+                # 具体值比较：
+                if (abs(ts_d.p_open - ak_d.p_open).round(2)) > GAP:
+                    print((abs(ts_d.p_open - ak_d.p_open)))
+                    res["result"] = False
+                    res["msg"].append("日期{d}, 股票{s}, 开盘价不等[Ts={ts}, Ak={ak}];".format(d=day, s=stock_id, ts=ts_d.p_open, ak=ak_d.p_open))
+                elif (abs(ts_d.p_close - ak_d.p_close).round(2)) > GAP:
+                    res["result"] = False
+                    res["msg"].append("日期{d}, 股票{s}, 收盘价不等[Ts={ts}, Ak={ak}];".format(d=day, s=stock_id, ts=ts_d.p_close, ak=ak_d.p_close))
+                elif (abs(ts_d.p_high - ak_d.p_high).round(2)) > GAP:
+                    res["result"] = False
+                    res["msg"].append("日期{d}, 股票{s}, 最高价不等[Ts={ts}, Ak={ak}];".format(d=day, s=stock_id, ts=ts_d.p_high, ak=ak_d.p_high))
+                elif (abs(ts_d.p_low - ak_d.p_low).round(2)) > GAP:
+                    res["result"] = False
+                    res["msg"].append("日期{d}, 股票{s}, 最低价不等[Ts={ts}, Ak={ak}];".format(d=day, s=stock_id, ts=ts_d.p_low, ak=ak_d.p_low))
 
         return res
     except Exception as err:
-        err_msg = "比较Tushare和Akshare数据源时出现异常，SQL异常:" + str(err)
+        err_msg = "比较Tushare和Akshare数据源股票日线数据时出现异常，SQL异常:" + str(err)
         log.error(err_msg)
         session.rollback()
         return res
     finally:
         session.close()
-
 
 
 if __name__ == "__main__":
