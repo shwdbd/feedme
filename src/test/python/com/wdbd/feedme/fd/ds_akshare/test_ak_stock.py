@@ -61,8 +61,12 @@ class TestAkStockDaily_EM(unittest.TestCase):
         tl.TEST_MODE = True
         session = tl.get_session()
         session.query(OdsAkshareStockDaily_EM).delete()
+        session.query(OdsDsStat).delete()
         session.commit()
         session.close()
+        # 准备真实股票清单
+        stock_list = AkCNStockList()
+        stock_list.download()
         return super().setUp()
 
     def test_download_bystock(self):
@@ -81,13 +85,40 @@ class TestAkStockDaily_EM(unittest.TestCase):
         self.assertEqual('20221215', cmbc.trade_date)
         self.assertEqual('600016.SH', cmbc.symbol)
         self.assertEqual(3.50, cmbc.p_open)
-        
+
         # 检查统计表信息
         stat = session.query(OdsDsStat).filter(OdsDsStat.ds_id == 'akshare.cnstock_daily_em').one_or_none()
         self.assertIsNotNone(stat)
         self.assertEqual(stat.ds_name, "AkshareA股日线 东财")
         self.assertEqual(stat.start_bar, "20221215")
-        self.assertEqual(stat.end_bar, "20221216")
+        self.assertEqual(stat.end_bar, "20221216")      # 1216为非交易日
+        self.assertEqual(stat.missing_bar, "")
+        self.assertEqual(stat.notes, "")
+        session.close()
+
+    def test_download_bydate(self):
+        """ 按日期下载 """
+        srv = AkStockDaily_EM()
+        res = srv.download_by_date(date="20221215", test_mode=True)
+        self.assertTrue(res["result"])
+        self.assertListEqual([], res["msg"])
+
+        session = tl.get_session()
+        # 检查表中记录数量
+        record_count = session.query(func.count(OdsAkshareStockDaily_EM.trade_date)).scalar()
+        self.assertGreater(record_count, 10)    # 20条模拟数据，N条当日没有数字
+        # 取一条数据检查
+        stock_daily = session.query(OdsAkshareStockDaily_EM).filter(OdsAkshareStockDaily_EM.symbol == "000001.SZ").filter(OdsAkshareStockDaily_EM.trade_date == "20221215").one_or_none()
+        self.assertIsNotNone(stock_daily)
+        self.assertEqual('20221215', stock_daily.trade_date)
+        self.assertEqual('000001.SZ', stock_daily.symbol)
+        self.assertEqual(13.14, stock_daily.p_open)
+
+        # 检查统计表信息
+        stat = session.query(OdsDsStat).filter(OdsDsStat.ds_id == 'akshare.cnstock_daily_em').one_or_none()
+        self.assertIsNotNone(stat)
+        self.assertEqual(stat.ds_name, "AkshareA股日线 东财")
+        self.assertEqual(stat.end_bar, "20221215")
         self.assertEqual(stat.missing_bar, "")
         self.assertEqual(stat.notes, "")
         session.close()

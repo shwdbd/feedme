@@ -293,7 +293,25 @@ class AkStockDaily_EM:
             "换手率": "turnover_rat",
         }
 
-    # TODO 待实现，按日期进行单日数据下载
+    # 数据清洗
+    def df_clear(self, df: pd.DataFrame, ts_code: str):
+        """数据清洗
+
+        Args:
+            df (pd.DataFrame): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        if df is None or df.empty:
+            return None
+        df.rename(columns=self.columns_mapping, inplace=True)
+        df["symbol"] = ts_code
+        df["trade_date"] = df["trade_date"].apply(d2dbstr)
+        # print(df.info())
+        return df
+
+    # 按日期进行单日数据下载
     def download_by_date(self, date: str, test_mode: bool = False):
         """按日下载股票数据
 
@@ -304,21 +322,29 @@ class AkStockDaily_EM:
             _type_: _description_
         """
         log = get_logger()
+        log.info("下载Akshare东方财富{d}的A股日线数据".format(d=date))
+        dw = AkshareGateWay()
         stocks = fd_api.get_stockid()
         df_list = []
-        for idx, stock in enumerate(stocks, start=1):
-            if test_mode and idx > 5:
+        log.debug("准备下载{0}支股票{1}的日线数据".format(len(stocks), date))
+        for idx, ts_code in enumerate(stocks, start=1):
+            if test_mode and idx > 20:
                 log.debug(idx)
                 break
-            symbol = stock[:6]
-            df = ak.stock_zh_a_hist(symbol=symbol, period="daily",
+            df = ak.stock_zh_a_hist(symbol=dw.tscode_2_symbol(ts_code), period="daily",
                                     start_date=date, end_date=date, adjust="")
-            # print(df)
-            # print(symbol)
-            df.rename(columns=self.columns_mapping, inplace=True)
-            df["symbol"] = symbol
-            df_list.append(df)
+            # 数据清洗
+            if self.df_clear(df, ts_code) is None:
+                log.debug("{d}股票{s}无数据，跳过不处理".format(d=date, s=ts_code))
+                continue
+            else:
+                # 当日有数据：
+                df_list.append(df)
         df = pd.concat(df_list)
+        if df is None or df.empty:
+            err_msg = "无法读取{0}的东方财富股票日线数据".format(date)
+            log.error(err_msg)
+            return {"result": False, "msg": [err_msg]}
         obj_list = records2objlist(df, OdsAkshareStockDaily_EM)
         log.debug("读取{0}条数据".format(len(obj_list)))
 
@@ -332,14 +358,10 @@ class AkStockDaily_EM:
             session.bulk_save_objects(obj_list)
             session.commit()
 
-            # TODO 比较date和表中最迟得日期，哪个大？
-            # # 更新统计表
-            # if start_date:
-            #     DsStatTool.log(id=self.DS_ID, start_bar=start_date, end_bar=end_date)
-            # else:
-            #     DsStatTool.log(id=self.DS_ID, end_bar=end_date)
+            # 更新统计表
+            DsStatTool.log(id=self.DS_ID, end_bar=date)
 
-            log.debug("下载更新完成")
+            log.debug("下载更新Akshare东财股票日线数据完成")
             return {"result": True, "msg": []}
         except Exception as err:
             err_msg = "下载Akshare A股日线数据（东方财经） 时遇到异常，SQL异常:" + str(err)
@@ -363,7 +385,7 @@ class AkStockDaily_EM:
         """
         log = get_logger()
 
-        log.debug("下载更新Akshare A股日线数据（东方财经） [股票代码: {0}]".format(ts_code))
+        # log.debug("下载更新Akshare A股日线数据（东方财经） [股票代码: {0}]".format(ts_code))
 
         gw = AkshareGateWay()
         stock_symbol = gw.tscode_2_symbol(ts_code)      # 600016.SH格式转为sh600016格式
@@ -374,14 +396,11 @@ class AkStockDaily_EM:
             df = ak.stock_zh_a_hist(
                 symbol=stock_symbol, period="daily", end_date=end_date, adjust="")
         # 数据清洗:
-        # 字段翻译
-        df.rename(columns=self.columns_mapping, inplace=True)
-        df["trade_date"] = df["trade_date"].apply(d2dbstr)
-        df["symbol"] = ts_code
-        print(df)
-        obj_list = records2objlist(df, OdsAkshareStockDaily_EM)
-        log.debug("读取{0}条数据".format(len(obj_list)))
-
+        df = self.df_clear(df, ts_code=ts_code)
+        if df is None:
+            return {"result": False, "msg": ["{0}未获得数据".format(ts_code)]}
+        else:
+            obj_list = records2objlist(df, OdsAkshareStockDaily_EM)
         if len(obj_list) == 0:
             err_msg = "当日未找到符合条件的数据，参数：ts_code={0}, start_date={1}, end_date={2}".format(
                 ts_code, start_date, end_date)
@@ -399,6 +418,7 @@ class AkStockDaily_EM:
             if end_date:
                 del_query.filter(OdsAkshareStockDaily_EM.trade_date <= end_date)
             del_query.delete()
+            # 插入数据
             session.bulk_save_objects(obj_list)
             session.commit()
 
@@ -408,7 +428,7 @@ class AkStockDaily_EM:
             else:
                 DsStatTool.log(id=self.DS_ID, end_bar=end_date)
 
-            log.debug("下载更新完成")
+            # log.debug("下载更新完成")
             return {"result": True, "msg": []}
         except Exception as err:
             err_msg = "下载Akshare A股日线数据（东方财经） 时遇到异常，SQL异常:" + str(err)
@@ -428,6 +448,7 @@ class AkStockDaily_EM:
         # 按股票清单，逐一股票下载
         log = get_logger()
 
+        err_msgs = []
         try:
             session = get_session()
             # 取得股票清单id列表
@@ -438,20 +459,28 @@ class AkStockDaily_EM:
                 # 从fdapi读取
                 stocks = fd_api.get_stockid()
             count_of_stocks = len(stocks)
-            print(stocks)
+            # print(stocks)
             log.info("共计有{0}支股票历史日线数据开始下载，请等待较长时间 ...".format(count_of_stocks))
 
             for idx, stock in enumerate(stocks, start=1):
-                log.debug(stock)
+                # log.debug(stock)
                 log.debug("{idx}/{all} {id}".format(idx=idx, all=count_of_stocks, id=stock))
-                self.download_by_stock(ts_code=stock)
+                try:
+                    result = self.download_by_stock(ts_code=stock)
+                    if not result["result"]:
+                        err_msg = "{0} 下载失败".format(stock)
+                        log.error(err_msg)
+                        err_msgs.append(err_msg)
+                except Exception as err:
+                    err_msgs.append("{0} 下载异常, {1}".format(stock, str(err)))
+            log.debug("全部下载完成")
 
             # 统计信息记录
             first_bar = session.query(sqlalchemy.func.min(OdsAkshareStockDaily_EM.trade_date)).scalar()
             last_bar = session.query(sqlalchemy.func.max(OdsAkshareStockDaily_EM.trade_date)).scalar()
             DsStatTool.log(id=self.DS_ID, start_bar=first_bar, end_bar=last_bar)
 
-            log.debug("全部下载完成！")
+            return {"result": True, "msg": err_msgs}
         except Exception as err:
             err_msg = "下载Akshare A股日线数据（东方财经）历史全量日线时遇到异常，SQL异常:" + str(err)
             log.error(err_msg)
@@ -477,7 +506,19 @@ class AkStockDaily_EM:
 #     res = srv.download_by_date(date="20221213", test_mode=True)
 #     print(res)
 
+# if __name__ == "__main__":
+#     srv = AkStockDaily_EM()
+#     res = srv.download_by_stock(ts_code="600016.SH", start_date="20221215")
+#     print(res)
+
+# if __name__ == "__main__":
+#     srv = AkStockDaily_EM()
+#     # res = srv.download_all(stockid_test="688525.SH")
+#     res = srv.download_all()
+#     print(res)
+
 if __name__ == "__main__":
     srv = AkStockDaily_EM()
-    res = srv.download_by_stock(ts_code="600016.SH", start_date="20221215")
+    # res = srv.download_all(stockid_test="688525.SH")
+    res = srv.download_by_date(date="20221215", test_mode=True)
     print(res)

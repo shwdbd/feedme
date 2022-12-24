@@ -9,7 +9,7 @@
 @Desc    :   ODS层的数据库表
 '''
 from com.wdbd.feedme.fd.common.common import Base
-from sqlalchemy import Column, String, DECIMAL
+from sqlalchemy import Column, String, FLOAT
 
 
 class OdsTushareTradeCal(Base):
@@ -85,15 +85,15 @@ class OdsTushareDaily(Base):
 
     ts_code = Column(String(50), primary_key=True)
     trade_date = Column(String(50), primary_key=True)
-    p_open = Column(DECIMAL(10, 2))
-    p_high = Column(DECIMAL(10, 2))
-    p_low = Column(DECIMAL(10, 2))
-    p_close = Column(DECIMAL(10, 2))
-    pre_close = Column(DECIMAL(10, 2))
-    p_change = Column(DECIMAL(10, 2))
-    pct_chg = Column(DECIMAL(10, 2))
-    vol = Column(DECIMAL(10, 2))
-    amount = Column(DECIMAL(10, 4))
+    p_open = Column(FLOAT())
+    p_high = Column(FLOAT())
+    p_low = Column(FLOAT())
+    p_close = Column(FLOAT())
+    pre_close = Column(FLOAT())
+    p_change = Column(FLOAT())
+    pct_chg = Column(FLOAT())
+    vol = Column(FLOAT())
+    amount = Column(FLOAT())
 
     def __repr__(self) -> str:
         return "Tushare A股日线[{0}, {1}] ".format(self.ts_code, self.trade_date)
@@ -106,17 +106,17 @@ class OdsAkshareStockDaily_163(Base):
 
     trade_date = Column(String(50), primary_key=True)
     symbol = Column(String(50), primary_key=True)
-    p_close = Column(DECIMAL(10, 2))
-    p_high = Column(DECIMAL(10, 2))
-    p_low = Column(DECIMAL(10, 2))
-    p_open = Column(DECIMAL(10, 2))
-    pre_close = Column(DECIMAL(10, 2))
-    pct_change = Column(DECIMAL(10, 2))
-    turnover_rat = Column(DECIMAL(10, 2))
-    volume_h = Column(DECIMAL(10, 2))
-    volume = Column(DECIMAL(10, 2))
-    tmv = Column(DECIMAL(10, 2))
-    cmv = Column(DECIMAL(10, 2))
+    p_close = Column(FLOAT())
+    p_high = Column(FLOAT())
+    p_low = Column(FLOAT())
+    p_open = Column(FLOAT())
+    pre_close = Column(FLOAT())
+    pct_change = Column(FLOAT())
+    turnover_rat = Column(FLOAT())
+    volume_h = Column(FLOAT())
+    volume = Column(FLOAT())
+    tmv = Column(FLOAT())
+    cmv = Column(FLOAT())
 
     def __repr__(self) -> str:
         return "Akshare A股日线[{0}, {1}] ".format(self.symbol, self.trade_date)
@@ -129,16 +129,16 @@ class OdsAkshareStockDaily_EM(Base):
 
     trade_date = Column(String(50), primary_key=True)
     symbol = Column(String(50), primary_key=True)
-    p_open = Column(DECIMAL(10, 2))
-    p_close = Column(DECIMAL(10, 2))
-    p_high = Column(DECIMAL(10, 2))
-    p_low = Column(DECIMAL(10, 2))
-    volume_h = Column(DECIMAL(10, 2))
-    volume = Column(DECIMAL(10, 2))
-    amp = Column(DECIMAL(10, 2))
-    pct_change = Column(DECIMAL(10, 2))
-    p_change = Column(DECIMAL(10, 2))
-    turnover_rat = Column(DECIMAL(10, 2))
+    p_open = Column(FLOAT())
+    p_close = Column(FLOAT())
+    p_high = Column(FLOAT())
+    p_low = Column(FLOAT())
+    volume_h = Column(FLOAT())
+    volume = Column(FLOAT())
+    amp = Column(FLOAT())
+    pct_change = Column(FLOAT())
+    p_change = Column(FLOAT())
+    turnover_rat = Column(FLOAT())
 
     def __repr__(self) -> str:
         return "Akshare A股日线[{0}, {1}] ".format(self.symbol, self.trade_date)

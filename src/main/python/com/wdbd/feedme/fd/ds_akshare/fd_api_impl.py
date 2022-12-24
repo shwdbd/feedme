@@ -158,7 +158,7 @@ def get_stockid(return_type: str = "tushare", exchange: str = None, stock_status
         quy = session.query(OdsAkshareStock.stock_id, OdsAkshareStock.exchange)
         if exchange:
             quy = quy.filter(OdsAkshareStock.exchange == exchange)
-        records = quy.all()
+        records = quy.order_by(OdsAkshareStock.stock_id).all()
 
         if len(records) == 0:
             return []
@@ -181,15 +181,16 @@ def get_stockid(return_type: str = "tushare", exchange: str = None, stock_status
                 res.append("{0}{1}".format(exchange_name, record[0]))
             else:
                 # print(record)
-                if record[1] == 'SSE':
-                    exchange_name = "SH"
-                elif record[1] == 'SZE':
-                    exchange_name = "SZ"
-                elif record[1] == 'BJE':
-                    exchange_name = "BJ"
-                else:
-                    exchange_name = []
-                res.append("{0}.{1}".format(record[0], exchange_name)) 
+                # if record[1] == 'SSE':
+                #     exchange_name = "SH"
+                # elif record[1] == 'SZE':
+                #     exchange_name = "SZ"
+                # elif record[1] == 'BJE':
+                #     exchange_name = "BJ"
+                # else:
+                #     exchange_name = []
+                # res.append("{0}.{1}".format(record[0], exchange_name))
+                res.append("{0}".format(record[0]))
         return res
     except Exception as err:
         err_msg = "查询Akshare A股股票清单时遇到异常，SQL异常:" + str(err)

@@ -30,16 +30,16 @@ class TestAkTradeCal(unittest.TestCase):
     def test_download_all(self):
         """ 下载全量 """
         first_date = "19901219"
-        end_date = "20221230"
+        end_date = "20231229"
         srv = AkTradeCal()
         res = srv.download()
-        msg = "下载完毕，{0}到{1} 共7828个交易日".format(first_date, end_date)
+        msg = "下载完毕，{0}到{1} 共8070个交易日".format(first_date, end_date)
         self.assertDictEqual({"result": True, "msg": [msg]}, res)
 
         session = tl.get_session()
         # 检查表中记录数量
         record_count = session.query(func.count(OdsAkshareTradeCal.trade_date)).scalar()
-        self.assertEqual(7828, record_count)
+        self.assertEqual(8070, record_count)
         # 检查 表中内容
         trade_date = session.query(OdsAkshareTradeCal.trade_date).filter(OdsAkshareTradeCal.trade_date == '20221216').one_or_none()
         self.assertEqual("20221216", trade_date[0])

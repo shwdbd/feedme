@@ -415,7 +415,8 @@ class DsStatTool:
             record_count = session.query(func.count(OdsDsStat.ds_id)).filter(OdsDsStat.ds_id == id).scalar()
             if record_count > 0:
                 record = session.query(OdsDsStat).filter(OdsDsStat.ds_id == id).scalar()
-                record.end_bar = end_bar
+                record.end_bar = max(end_bar, record.end_bar)
+                # record.end_bar = end_bar
                 if start_bar != '':
                     record.start_bar = start_bar
                 if missing_bar != '':
