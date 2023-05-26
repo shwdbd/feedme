@@ -41,6 +41,8 @@ def do_compare(export_file: str = "export/数据比对结果.txt") -> None:
     res_list.append(compare_cal_ak_ts())
     # 股票清单
     res_list.append(compare_stocklist_ak_ts())
+    # 股票日线比骄
+    res_list.append(compare_stock_daily_ak_ts())
 
     _write_text_file(results=res_list, export_file=export_file, encoding=ENCODING)
 
@@ -271,17 +273,17 @@ def compare_stock_daily_ak_ts():
                     continue
 
                 # 具体值比较：
-                if (abs(ts_d.p_open - ak_d.p_open).round(2)) > GAP:
-                    print((abs(ts_d.p_open - ak_d.p_open)))
+                if (round(abs(ts_d.p_open - ak_d.p_open), 2)) > GAP:
+                    # print((abs(ts_d.p_open - ak_d.p_open)))
                     res["result"] = False
                     res["msg"].append("日期{d}, 股票{s}, 开盘价不等[Ts={ts}, Ak={ak}];".format(d=day, s=stock_id, ts=ts_d.p_open, ak=ak_d.p_open))
-                elif (abs(ts_d.p_close - ak_d.p_close).round(2)) > GAP:
+                elif (round(abs(ts_d.p_close - ak_d.p_close), 2)) > GAP:
                     res["result"] = False
                     res["msg"].append("日期{d}, 股票{s}, 收盘价不等[Ts={ts}, Ak={ak}];".format(d=day, s=stock_id, ts=ts_d.p_close, ak=ak_d.p_close))
-                elif (abs(ts_d.p_high - ak_d.p_high).round(2)) > GAP:
+                elif (round(abs(ts_d.p_high - ak_d.p_high), 2)) > GAP:
                     res["result"] = False
                     res["msg"].append("日期{d}, 股票{s}, 最高价不等[Ts={ts}, Ak={ak}];".format(d=day, s=stock_id, ts=ts_d.p_high, ak=ak_d.p_high))
-                elif (abs(ts_d.p_low - ak_d.p_low).round(2)) > GAP:
+                elif (round(abs(ts_d.p_low - ak_d.p_low), 2)) > GAP:
                     res["result"] = False
                     res["msg"].append("日期{d}, 股票{s}, 最低价不等[Ts={ts}, Ak={ak}];".format(d=day, s=stock_id, ts=ts_d.p_low, ak=ak_d.p_low))
 
@@ -296,8 +298,14 @@ def compare_stock_daily_ak_ts():
 
 
 if __name__ == "__main__":
-    res = compare_stock_daily_ak_ts()
-    print(res)
+    # 结果导出到文本
+    do_compare()
+
+
+# if __name__ == "__main__":
+#     # 股票日线比较
+#     res = compare_stock_daily_ak_ts()
+#     print(res)
 
 # if __name__ == "__main__":
 #     res = compare_cal_ak_ts()

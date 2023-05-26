@@ -66,7 +66,7 @@ def list_kn_dir():
             basename = os.path.basename(f)
             (n, p) = os.path.splitext(basename)
             print(n)
-        
+
         # # print(f)
         # # print(os.path.basename(f))
         # basename = os.path.basename(f)
@@ -74,7 +74,6 @@ def list_kn_dir():
         # print(n)
         # print(dir_path)
     # print()
-
 
 
 if __name__ == "__main__":
