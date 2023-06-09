@@ -16,9 +16,11 @@ class TestCMBCExactor(unittest.TestCase):
     """ 解析民生银行财报 """
     # TODO 测试 季报、半年报
 
+    file_dir = "src/test/python/com/wdbd/feedme/fd/siw/files/"
+
     def test_exactor_2022Annual(self):
         # 民生银行22年年报
-        file_name = 'C:/Users/wang/OneDrive/3_Work/GTP01 A股财报/SH600016 民生银行 2022年年报.pdf'
+        file_name = self.file_dir + 'SH600016 民生银行 2022年年报.pdf'
         bank = CMBC()
         res = bank.exact_pdf_file(file_name)
         self.assertIsNotNone(res)
@@ -71,7 +73,7 @@ class TestCMBCExactor(unittest.TestCase):
 
     def test_exactor_2021Annual(self):
         # 民生银行21年年报
-        file_name = 'C:/Users/wang/OneDrive/3_Work/GTP01 A股财报/SH600016 民生银行 2021年年报.pdf'
+        file_name = self.file_dir + 'SH600016 民生银行 2021年年报.pdf'
         bank = CMBC()
         res = bank.exact_pdf_file(file_name)
         self.assertIsNotNone(res)
