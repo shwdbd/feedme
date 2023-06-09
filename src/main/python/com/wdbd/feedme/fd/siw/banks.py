@@ -8,12 +8,30 @@
 @Contact :   shwangjj@163.com
 @Desc    :   None
 '''
-from com.wdbd.feedme.fd.siw import AbstractStockExactor
+# from com.wdbd.feedme.fd.siw import AbstractStockExactor
 import pdfplumber
 from com.wdbd.feedme.fd.siw.tools import to_number, get_stock_info, log
 import os
 
 
+class AbstractStockExactor:
+    """单一股票财报提取器(抽象基类)
+    """
+
+    def exact_pdf_file(self, file: str) -> dict:
+        """从pdf格式的财报提取数据
+
+        Args:
+            file (_type_): pdf数据文件路径
+
+        Returns:
+            dict: 以字典格式返回提取到的指标，如果出错，则只返回{"result": False, "messages": ""}
+                正确则返回：{"result": True, "messages": "", "index": {"指标1": "abc", "指标2": "efg"}}
+        """
+        return {}
+
+
+# ==================================================
 class CMBC(AbstractStockExactor):
     """ 民生银行 """
     # TODO 解析季报
@@ -26,7 +44,7 @@ class CMBC(AbstractStockExactor):
 
         Returns:
             dict: 以字典格式返回提取到的指标，如果出错，则只返回{"result": False, "messages": ""}
-                正确则返回：{"result": True, "messages": "", "index": {"指标1": "abc", "指标2": "efg"}}
+                正确则返回：{"result": True, "messages": "", 'stock': {'id': 'SH600016', 'name': '民生银行', 'fr_date': '2022年年报'}, "index": {"指标1": "abc", "指标2": "efg"}}
         """
         # EFFECTS:
         # 1. 读取文件
@@ -170,6 +188,7 @@ if __name__ == "__main__":
     file_name = 'C:/Users/wang/OneDrive/3_Work/GTP01 A股财报/SH600016 民生银行 2022年年报.pdf'
     cmbc = CMBC()
     res = cmbc.exact_pdf_file(file_name)
+    print(res)
     print("净利润 = {0}".format(res["index"]["净利润"]))
     print("营业收入 = {0}".format(res["index"]["营业收入"]))
     print("生息资产 = {0}".format(res["index"]["生息资产"]))

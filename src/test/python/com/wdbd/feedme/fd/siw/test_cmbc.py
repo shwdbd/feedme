@@ -16,7 +16,7 @@ class TestCMBCExactor(unittest.TestCase):
     """ 解析民生银行财报 """
     # TODO 测试 季报、半年报
 
-    def test_exactor(self):
+    def test_exactor_2022Annual(self):
         # 民生银行22年年报
         file_name = 'C:/Users/wang/OneDrive/3_Work/GTP01 A股财报/SH600016 民生银行 2022年年报.pdf'
         bank = CMBC()
@@ -69,8 +69,8 @@ class TestCMBCExactor(unittest.TestCase):
         self.assertEqual(10.91, index["一级资本充足率"])
         self.assertEqual(13.14, index["资本充足率"])
 
-    def test_exactor_2021Anual(self):
-        # 民生银行22年年报
+    def test_exactor_2021Annual(self):
+        # 民生银行21年年报
         file_name = 'C:/Users/wang/OneDrive/3_Work/GTP01 A股财报/SH600016 民生银行 2021年年报.pdf'
         bank = CMBC()
         res = bank.exact_pdf_file(file_name)

@@ -14,6 +14,7 @@ from com.wdbd.feedme.fd.ds_efinance.ef_stock import SecurityListUnit as ef_Secur
 from com.wdbd.feedme.fd.tools.data_comparor import datasouce_stat
 from com.wdbd.feedme.fd.ds_tushare.ts_stock import TsTradeCal, TsStockDaily, TsStockList
 import com.wdbd.feedme.fd.common.common as tl
+from com.wdbd.feedme.fd.siw.cli import siw
 
 
 @click.command()
@@ -133,6 +134,7 @@ def cli():
 cli.add_command(cmd=dd, name="download")
 cli.add_command(cmd=get_today, name="today")
 cli.add_command(stat)
+cli.add_command(siw)
 
 
 if __name__ == "__main__":

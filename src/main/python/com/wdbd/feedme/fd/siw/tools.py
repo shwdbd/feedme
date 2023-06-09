@@ -8,11 +8,13 @@
 @Contact :   shwangjj@163.com
 @Desc    :   基础工具
 '''
-# TODO 文件归档
 import os
 import shutil
 import logging.config
-from com.wdbd.feedme.fd.common.common import TEST_MODE
+from com.wdbd.feedme.fd.common.common import TEST_MODE, get_cfg
+import com.wdbd.feedme.fd.common.common as tl
+from com.wdbd.feedme.fd.orm.ods_tables import OdsBankstockIndex, OdsBankstockFrHandleLog
+from sqlalchemy import and_
 
 
 def get_exception_logger():
@@ -31,6 +33,7 @@ def get_exception_logger():
 log = get_exception_logger()
 
 
+# 把数字字符串转成数字
 def to_number(number_str: str, unit: str = None) -> float:
     """把数字字符串转成数字
 
@@ -47,9 +50,12 @@ def to_number(number_str: str, unit: str = None) -> float:
         res = res * 1000
     elif unit == '百万':
         res = res * 100 * 10000
+    elif unit == '亿':
+        res = res * 10000 * 10000
     return round(res, 2)
 
 
+# 检查 财报文件名 是否符合要求
 def check_rpfile_format(filename: str) -> bool:
     """检查 财报文件名 是否符合要求
 
@@ -102,20 +108,108 @@ def get_stock_info(filename: str) -> dict:
 
 
 # 文件备份
-def archive_file(filename) -> bool:
-    """ 文件备份 """
-    # TODO 待备份
+def archive_file(filename: str) -> bool:
+    """ 将财报文件执行备份
+
+    Args:
+        filename (str): 文件完整路径
+
+    Returns:
+        bool: 执行结果
+    """
+
     if os.path.exists(filename) is False:
         return False
+    try:
+        bak_folder = get_cfg(section="fd.siw", key="bak_folder")
+        shutil.copyfile(filename, (bak_folder + os.path.basename(filename)))
+        return True
+    except Exception as err:
+        log.error("备份文件{0}时出错！{1}".format(
+            os.path.basename(filename), str(err)))
+        return False
 
-    shutil.copyfile(filename, "C:/下载/SH600016 民生银行 2022年年报.pdf")
-    
 
-    return False
+# 指标存入数据库
+def save_to_db(bank_index_dict: dict) -> bool:
+    """指标存入数据库
+
+    Args:
+        bank_index_dict (dict): _description_
+
+    Returns:
+        bool: _description_
+    """
+    # with tl.SQLiteDb() as db:
+    #     db.execute()
+    #     print(db)
+    # EFFECTS:
+    # 1. 找出 股票信息
+    # 2. 删除 ods_bankstock_index、ods_bankstock_fr_handle_log 表内容
+    # 3. 添加 ods_bankstock_index、ods_bankstock_fr_handle_log 表内容
+    # 4. 事务提交
+    # 5. 返回结果
+    # END
+
+    try:
+        session = tl.get_session()
+        # 股票信息
+        stock_info = bank_index_dict["stock"]
+        stock_id = stock_info.get("id")
+        stock_name = stock_info.get("name")
+        fr_date = stock_info.get("fr_date")
+        print(stock_info["fr_date"])
+        # 指标清单
+        index_names = ",".join(bank_index_dict["index"].keys())
+        print(index_names)
+
+        # 删除现有数据
+        session.query(OdsBankstockIndex).filter(and_(
+            OdsBankstockIndex.stockid == stock_id, OdsBankstockIndex.fr_date == fr_date)).delete()
+        session.query(OdsBankstockFrHandleLog).filter(and_(
+            OdsBankstockFrHandleLog.stockid == stock_id, OdsBankstockFrHandleLog.fr_date == fr_date)).delete()
+
+        # 更新指标：
+        for index_id in bank_index_dict["index"]:
+            index = OdsBankstockIndex()
+            index.stockid = stock_id
+            index.stock_name = stock_name
+            index.fr_date = fr_date
+            index.index_id = index_id
+            index.index_name = index_id
+            index.index_value = bank_index_dict["index"].get(index_id)
+            session.add(index)
+        # 更新指标记录
+        log = OdsBankstockFrHandleLog()
+        log.stockid = stock_id
+        log.stock_name = stock_name
+        log.fr_date = fr_date
+        log.handled = '1'
+        log.index_names = index_names
+        log.last_modifed_dt = tl.today()
+        session.add(log)
+        # 事务提交
+        session.commit()
+
+        return True
+    except Exception as err:
+        log.error("指标写入数据库时出错, " + str(err))
+        session.rollback()
+        log.error("事务已回滚")
+        return False
+    finally:
+        session.close()
+
 
 if __name__ == "__main__":
     # print(to_number("12,345.67"))
     # print(check_rpfile_format("SH600016 民生银行 2023年Q1.pdf"))
     # print(check_rpfile_format("SH600016 民生银行 2023年报.pdf"))
     # log.info("This is Info")
-    archive_file('C:/Users/wang/OneDrive/3_Work/GTP01 A股财报/SH600016 民生银行 2022年年报.pdf')
+    # res = archive_file('C:/Users/wang/OneDrive/3_Work/GTP01 A股财报/SH600016 民生银行 2022年年报.pdf')
+    # print(res)
+
+    tl.TEST_MODE = True
+    # data = {'result': True, 'message': '', 'index': {'营业收入': 142476000000.0, '利息净收入': 107463000000.0}, 'stock': {'id': 'SH600016', 'name': '民生银行', 'fr_date': '2022年年报'}}
+    # res = save_to_db(data)
+    # print(res)

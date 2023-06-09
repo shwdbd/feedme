@@ -156,6 +156,38 @@ class OdsAkshareStock(Base):
     def __repr__(self) -> str:
         return "Akshare股票 [{0} {1}, {2}] ".format(self.stock_id, self.name, self.exchange)
 
+
+class OdsBankstockIndex(Base):
+    """ 银行股指标表 """
+
+    __tablename__ = 'ods_bankstock_index'
+
+    stockid = Column(String(10), primary_key=True)
+    stock_name = Column(String(50))
+    fr_date = Column(String(10), primary_key=True)
+    index_id = Column(String(10), primary_key=True)
+    index_name = Column(String(50))
+    index_value = Column(FLOAT())
+
+    def __repr__(self) -> str:
+        return "银行股指标 [{0} {1}, {2}] ".format(self.stockid, self.fr_date, self.index_id)
+
+
+class OdsBankstockFrHandleLog(Base):
+    """ 银行财报处理情况表 """
+
+    __tablename__ = 'ods_bankstock_fr_handle_log'
+
+    stockid = Column(String(10), primary_key=True)
+    stock_name = Column(String(50))
+    fr_date = Column(String(10), primary_key=True)
+    handled = Column(String(1))
+    index_names = Column(String(500))
+    last_modifed_dt = Column(String(8))
+
+    def __repr__(self) -> str:
+        return "银行财报处理情况表 [{0} {1}] ".format(self.stockid, self.fr_date)
+
 # if __name__ == "__main__":
 #     session = get_session()
 #     cal = OdsTushareTradeCal(exchange="SSE", cal_date="20221122", is_open='1', pretrade_date='00000000')
