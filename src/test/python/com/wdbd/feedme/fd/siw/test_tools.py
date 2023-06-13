@@ -51,6 +51,7 @@ class TestSIWTools(unittest.TestCase):
         """ 测试 检查 财报文件名 是否符合要求 """
         # 正确
         self.assertTrue(check_rpfile_format("SH600016 民生银行 2023年Q1.pdf"))
+        self.assertTrue(check_rpfile_format("SH600016 民生银行 2023年Q2.pdf"))
         self.assertTrue(check_rpfile_format("SH600016 民生银行 2022年年报.pdf"))
         # 错误
         self.assertFalse(check_rpfile_format("600016 xx银行 2023年Q1.pdf"))

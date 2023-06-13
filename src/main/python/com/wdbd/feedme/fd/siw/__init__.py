@@ -9,7 +9,7 @@
 @Desc    :   SIW 股票指标观测器 子项目
 '''
 import os
-from com.wdbd.feedme.fd.siw.tools import get_stock_info, check_rpfile_format, log, archive_file
+from com.wdbd.feedme.fd.siw.tools import get_stock_info, check_rpfile_format, log as err_log, archive_file, save_to_db
 from com.wdbd.feedme.fd.siw.banks import CMBC
 
 
@@ -29,6 +29,7 @@ class FinanceReportExactor:
         {
           "result": True,
           "messages": "",
+          "stock": {"id": "SH600016', 'name': 'xxxx', 'fr_date': '2023年年报'}
           "index": {"指标1": "abc", "指标2": "efg"}
         }
         错误返回：
@@ -43,46 +44,57 @@ class FinanceReportExactor:
         Returns:
             dict: 执行结果
         """
-        # TODO 待实现
-        # TODO 1. 解析文件，如果错误则返回
-        # TODO 2. 解析文件内容
-        # TODO 3. 备份文件
-        # TODO 4. 写入数据库
+        # 1. 解析文件，如果错误则返回
+        # 2. 解析文件内容
+        # 3. 备份文件
+        # 4. 写入数据库
         # END
+        err_log.info("读取财报文件, {0}".format(filename))
 
-        if os.path.exists(filename) is False:
+        if not filename or os.path.exists(filename) is False:
+            err_log.info("读取财报文件失败！, 文件未找到。{0}".format(filename))
             return {"result": False, "message": "文件不存在！{0}".format(filename)}
 
-        # 解析文件，如果错误则返回
-        if not check_rpfile_format(os.path.basename(filename)):
-            return {"result": False, "message": "财报文件名格式不正确！{0}".format(filename)}
-        
-        res = {"result": True, "message": ""}
-        res_stock = get_stock_info(os.path.basename(filename))
-        if not res_stock:
-            return {"result": False, "message": "财报文件名格式不正确！{0}".format(filename)}
-        res["stock"] = res_stock
-        # print(res)
-        
-        # 解析文件内容
-        if res_stock["name"] == '民生银行':
-            exactor = CMBC()
-            r = exactor.exact_pdf_file(filename)
-            if not r["result"]:
-                log.error("解析失败！")
-                return
+        try:
+            # 解析文件，如果错误则返回
+            if not check_rpfile_format(os.path.basename(filename)):
+                err_log.info("读取财报文件失败！, 财报文件名格式不正确！{0}".format(filename))
+                return {"result": False, "message": "财报文件名格式不正确！{0}".format(filename)}
+
+            # 初始化返回值
+            res = {"result": True, "message": ""}
+            res_stock = get_stock_info(os.path.basename(filename))
+            if not res_stock:
+                err_log.info("读取财报文件失败！, 财报文件名格式不正确！{0}".format(filename))
+                return {"result": False, "message": "财报文件名格式不正确！{0}".format(filename)}
+            res["stock"] = res_stock
+            # print(res)
+
+            # 解析文件内容，加载解析器
+            if res_stock["name"] == '民生银行':
+                exactor = CMBC()
             else:
-                log.info(r["index"])
-                # TODO 备份
-                archive_file(filename)
-                # TODO 写数据库
-            print(r)
-        
-        
-        
-        
-        
-        return None
+                err_log.error("未知银行," + res_stock["name"])
+                return {"result": False, "message": "未知银行," + res_stock["name"]}
+
+            # 执行操作
+            res_data = exactor.exact_pdf_file(filename)
+            if not res_data["result"]:
+                err_log.error("读取财报文件失败！")
+                return {"result": False, "message": "文件归档失败"}
+            else:
+                err_log.info("解析财报文件成功")
+                if not archive_file(filename):  # 文件备份
+                    err_log.error("读取财报文件失败！文件归档失败")
+                    return {"result": False, "message": "文件归档失败"}
+                if not save_to_db(res_data):  # 写数据库
+                    err_log.error("读取财报文件失败！数据库保存错误")
+                    return {"result": False, "message": "数据库保存错误"}
+
+                return res_data
+        except Exception as err:
+            err_log.info("读取财报文件失败！, 异常:{0}".format(str(err)))
+            return {"result": False, "message": "读取财报文件失败！, 异常:{0}".format(str(err))}
 
     def load_by_dir(self, foloder_path) -> dict:
         """
@@ -133,33 +145,8 @@ class FinanceReport:
         self.fr_date = ""           # 2022年年报
 
 
-# class BasicService:
-#     """ 通用服务类 """
-
-#     def archive_file(self, file: str) -> bool:
-#         """文件归档
-
-#         Args:
-#             file (str): 文件路径
-
-#         Returns:
-#             bool: 是否归档
-#         """
-#         # TODO 待处理
-#         return None
-
-#     def index_save_to_db(self, index: dict) -> bool:
-#         """_summary_
-
-#         Args:
-#             index (dict): _description_
-
-#         Returns:
-#             bool: _description_
-#         """
-#         return False
-
 if __name__ == "__main__":
     file_name = 'C:/Users/wang/OneDrive/3_Work/GTP01 A股财报/SH600016 民生银行 2022年年报.pdf'
     srv = FinanceReportExactor()
-    srv.load_by_file(file_name)
+    res = srv.load_by_file(None)
+    print(res)

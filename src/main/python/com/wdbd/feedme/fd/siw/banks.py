@@ -56,24 +56,62 @@ class CMBC(AbstractStockExactor):
             # 解析文件名，填写返回值
             stock = get_stock_info(os.path.basename(file))
             result["stock"] = stock
+            # TODO 异常处理。stock is None
 
-            MAX_PAGE = 50
-            with pdfplumber.open(file) as pdf_reader:
-                for page_num, page in enumerate(pdf_reader.pages, start=1):
-                    if page_num > MAX_PAGE:    # 超过最大页数则终止解析
-                        break
-                    page_text = page.extract_text()     # 解析成文本
+            # TODO 季报，具体实现
 
-                    if "一、 主要会计数据和财务指标" in page_text:
-                        self.exact_page_22(result, pdf_reader, page_num, page_text)
-                    elif "（三）利息净收入及净息差" in page_text:
-                        self.exact_page_42(result, pdf_reader, page_num, page)
-                    elif "（一）按五级分类划分的贷款分布情况" in page_text:
-                        self.exact_page_44(result, page)
-            return result
+            if ("年报" in result["stock"]["fr_date"]) or ("Q2" in result["stock"]["fr_date"]):
+                MAX_PAGE = 50
+                with pdfplumber.open(file) as pdf_reader:
+                    for page_num, page in enumerate(pdf_reader.pages, start=1):
+                        if page_num > MAX_PAGE:    # 超过最大页数则终止解析
+                            break
+                        page_text = page.extract_text()     # 解析成文本
+
+                        if "主要会计数据和财务指标" in page_text:
+                            self.exact_page_22(result, pdf_reader, page_num, page_text)
+                        elif "（三）利息净收入及净息差" in page_text:
+                            self.exact_page_42(result, pdf_reader, page_num, page)
+                        elif "（一）按五级分类划分的贷款分布情况" in page_text:
+                            self.exact_page_44(result, page)
+                return result
+            elif ("Q1" in result["stock"]["fr_date"]) or ("Q3" in result["stock"]["fr_date"]):
+                # 季报
+                self.exact_q_report(file, result)
+                return result
+            else:
+                log.info("未知格式财报，无法解析")
+                return {"result": False, "message": "未知格式财报，无法解析"}
+
         except Exception as e:
             log.error("解析民生银行财报出现异常，" + str(str))
             return {"result": False, "message": str(e)}
+
+    def exact_q_report(self, file, result):
+        # 提取季报信息
+        MAX_PAGE = 20
+        result["index"]["票据规模占比"] = None
+        result["index"]["非利息净收入"] = None
+        result["index"]["生息资产"] = None
+        result["index"]["同业资产占比"] = None
+        result["index"]["贷款规模"] = None
+        result["index"]["票据规模占比"] = None
+        result["index"]["证券投资规模"] = None
+        result["index"]["付息负债"] = None
+        result["index"]["同业负债占比"] = None
+        result["index"]["存款规模"] = None
+        result["index"]["对公活期存款占比"] = None
+        result["index"]["活期储蓄占比"] = None
+        result["index"]["应付债券规模"] = None
+        with pdfplumber.open(file) as pdf_reader:
+            for page_num, page in enumerate(pdf_reader.pages, start=1):
+                if page_num > MAX_PAGE:    # 超过最大页数则终止解析
+                    break
+                page_text = page.extract_text()     # 解析成文本
+                if "主要会计数据和财务指标" in page_text:
+                    self.exact_q_report_table_1(result, pdf_reader, page_num, page_text)
+                elif "资本充足率与杠杆率情况" in page_text:
+                    self.exact_q_report_table_2(result, pdf_reader, page_num, page_text)
 
     def exact_page_44(self, result, page):
         for line in page.extract_text().split("\n"):
@@ -126,8 +164,49 @@ class CMBC(AbstractStockExactor):
         result["index"]["对公活期存款占比"] = round(corp_hq*100/gscz, 2)
         result["index"]["活期储蓄占比"] = round(gr_hq*100/grcz, 2)
 
+    def exact_q_report_table_1(self, result, pdf_reader, page_num, page_text):
+        """ 季度报告，主要会计数据和财务指标 表 """
+        # 表：一、主要会计数据和财务指标
+        for line in page_text.split("\n"):
+            if "资产总额" == line.split(" ")[0]:
+                result["index"]["总资产"] = to_number(line.split(" ")[1], "百万")
+            elif "不良贷款总额" == line.split(" ")[0]:
+                result["index"]["不良贷款规模"] = to_number(line.split(" ")[1], "百万")
+            elif "不良贷款率" == line.split(" ")[0]:
+                result["index"]["不良贷款率"] = to_number(line.split(" ")[1])
+            elif "拨备覆盖率" == line.split(" ")[0]:
+                result["index"]["拨备覆盖率"] = to_number(line.split(" ")[1])
+            elif "贷款拨备率" == line.split(" ")[0]:
+                result["index"]["贷款拨备率"] = to_number(line.split(" ")[1])
+        # 下一页
+        next_table_page = pdf_reader.pages[page_num]
+        for line in next_table_page.extract_text().split("\n"):
+            if "归属于本行股东的净利润" == line.split(" ")[0]:
+                result["index"]["净利润"] = to_number(line.split(" ")[1], "百万")
+            elif "营业收入" == line.split(" ")[0]:
+                result["index"]["营业收入"] = to_number(line.split(" ")[1], "百万")
+            elif "利息净收入" == line.split(" ")[0]:
+                result["index"]["利息净收入"] = to_number(line.split(" ")[1], "百万")
+            elif "成本收入比" == line.split(" ")[0]:
+                result["index"]["成本收入比"] = to_number(line.split(" ")[1])
+            elif "净息差（年化）" == line.split(" ")[0]:
+                result["index"]["净息差"] = to_number(line.split(" ")[1])
+
+    def exact_q_report_table_2(self, result, pdf_reader, page_num, page_text):
+        """ 季度报告，资本充足率与杠杆率情况  表 """
+        # 表：（二）资本充足率与杠杆率情况
+        for line in page_text.split("\n"):
+            print(line.split(" ")[0])
+            if "核心一级资本充足率（%）" == line.split(" ")[0]:
+                result["index"]["核心一级资本充足率"] = to_number(line.split(" ")[1])
+            elif "一级资本充足率（%）" == line.split(" ")[0]:
+                result["index"]["一级资本充足率"] = to_number(line.split(" ")[1])
+            elif "资本充足率（%）" == line.split(" ")[0]:
+                result["index"]["资本充足率"] = to_number(line.split(" ")[1])
+
     def exact_page_22(self, result, pdf_reader, page_num, page_text):
         """ 解析22页 """
+        # 表：一、主要会计数据和财务指标
         for line in page_text.split("\n"):
             if "归属于本行股东的净利润" == line.split(" ")[0]:
                 result["index"]["净利润"] = to_number(line.split(" ")[1], "百万")
@@ -139,7 +218,7 @@ class CMBC(AbstractStockExactor):
                 result["index"]["非利息净收入"] = to_number(line.split(" ")[1], "百万")
             elif "成本收入比" == line.split(" ")[0]:
                 result["index"]["成本收入比"] = to_number(line.split(" ")[1])
-            elif "净息差" == line.split(" ")[0]:
+            elif ("净息差" == line.split(" ")[0]) or ("净息差（年化）" == line.split(" ")[0]):
                 result["index"]["净息差"] = to_number(line.split(" ")[1])
 
         # 下一页
@@ -185,7 +264,7 @@ class CMBC(AbstractStockExactor):
 # TODO 兴业银行待实现
 
 if __name__ == "__main__":
-    file_name = 'C:/Users/wang/OneDrive/3_Work/GTP01 A股财报/SH600016 民生银行 2022年年报.pdf'
+    file_name = 'C:/Users/wang/OneDrive/3_Work/GTP01 A股财报/SH600016 民生银行 2023年Q1.pdf'
     cmbc = CMBC()
     res = cmbc.exact_pdf_file(file_name)
     print(res)
@@ -194,3 +273,4 @@ if __name__ == "__main__":
     print("生息资产 = {0}".format(res["index"]["生息资产"]))
     print("同业资产占比 = {0}".format(res["index"]["同业资产占比"]))
     print("同业资产占比 = {0}".format(res["index"]["同业资产占比"]))
+    print("资本充足率 = {0}".format(res["index"]["资本充足率"]))

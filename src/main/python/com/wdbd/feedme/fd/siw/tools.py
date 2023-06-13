@@ -94,8 +94,10 @@ def get_stock_info(filename: str) -> dict:
     """ 根据文件名，解析股票代码、期数等信息 """
     # 正确返回示范：{"id": "SH600016"， "name": "民生银行", "fr_date": "2023Q1"}
     # 错误返回示范: None
-
-    if check_rpfile_format(filename) is False:
+    if not filename:
+        return None
+    if check_rpfile_format(os.path.basename(filename)) is False:
+        print("错误的文件格式，" + filename)
         return None
 
     result = {}
@@ -150,6 +152,7 @@ def save_to_db(bank_index_dict: dict) -> bool:
     # 4. 事务提交
     # 5. 返回结果
     # END
+    log = get_exception_logger()
 
     try:
         session = tl.get_session()
