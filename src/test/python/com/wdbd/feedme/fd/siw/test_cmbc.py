@@ -14,7 +14,6 @@ from com.wdbd.feedme.fd.siw.banks import CMBC
 
 class TestCMBCExactor(unittest.TestCase):
     """ 解析民生银行财报 """
-    # TODO 测试 季报
 
     file_dir = "src/test/python/com/wdbd/feedme/fd/siw/files/"
 

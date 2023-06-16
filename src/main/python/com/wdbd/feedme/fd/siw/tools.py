@@ -44,15 +44,19 @@ def to_number(number_str: str, unit: str = None) -> float:
     Returns:
         _type_: 数字
     """
-    number_str = number_str.replace(",", "")
-    res = float(number_str)
-    if unit == '千':
-        res = res * 1000
-    elif unit == '百万':
-        res = res * 100 * 10000
-    elif unit == '亿':
-        res = res * 10000 * 10000
-    return round(res, 2)
+    try:
+        number_str = number_str.replace(",", "")
+        res = float(number_str)
+        if unit == '千':
+            res = res * 1000
+        elif unit == '百万':
+            res = res * 100 * 10000
+        elif unit == '亿':
+            res = res * 10000 * 10000
+        return round(res, 2)
+    except Exception:
+        print('Exception occurred! ' + str(number_str))
+        return None
 
 
 # 检查 财报文件名 是否符合要求
