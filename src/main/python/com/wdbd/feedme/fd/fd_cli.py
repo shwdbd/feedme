@@ -11,20 +11,25 @@
 import click
 from com.wdbd.feedme.fd.ds_baostock.bs_stock import SecurityListUnit as bs_SecurityListUnit, CnStockDailyK as bs_CnStockDailyK
 from com.wdbd.feedme.fd.ds_efinance.ef_stock import SecurityListUnit as ef_SecurityListUnit, CnStockDailyK as ef_CnStockDailyK
+from com.wdbd.feedme.fd.ds_akshare.ak_cal import AkTradeCal
 from com.wdbd.feedme.fd.tools.data_comparor import datasouce_stat
 from com.wdbd.feedme.fd.ds_tushare.ts_stock import TsTradeCal, TsStockDaily, TsStockList
 import com.wdbd.feedme.fd.common.common as tl
 from com.wdbd.feedme.fd.siw.cli import siw
 
 
+# 数据源清单
+DATA_SOURCE = ['tushare', 'baostock', 'akshare']
+
+
 # 数据下载
 @click.command()
-@click.option('--source', '-s', help='数据源, 可以选择baostock|efinance|tushare', type=click.STRING, default="tushare")
-@click.option('--data', '-d', help='数据项目, 如：trade_cal', type=click.STRING)
-@click.option('--from_date', '-f', help='开始日期', type=click.STRING, prompt="请输入开始日期 --date")
-@click.option('--to_date', '-t', help='终止日期，默认为系统日期今天', type=click.STRING, default=tl.today(), prompt="请输入截止日期 --date2")
+@click.option('--source', '-s', help='数据源, 可以选择baostock|efinance|tushare', type=click.Choice(DATA_SOURCE), default="tushare")
+@click.option('--item', '-i', help='数据项目, 如: trade_cal', type=click.STRING)
+@click.option('--date', '-d', help='开始日期', type=click.STRING)
+@click.option('--date2', '-d2', help='终止日期，默认为系统日期今天', type=click.STRING, default=tl.today())
 @click.option('--recover', '-r', help='已有数据是否覆盖, 默认为False', type=click.BOOL, default=False)
-def dd(source: str, from_date: str, to_date: str = None, data: str = None, recover: bool = False):
+def dd(source: str, date: str, date2: str = None, item: str = None, recover: bool = False):
     """下载证券数据
 
     Args:
@@ -37,9 +42,9 @@ def dd(source: str, from_date: str, to_date: str = None, data: str = None, recov
     click.secho('下载A股股票数据', fg='red')
 
     click.echo("source={0}".format(source))
-    click.echo("data={0}".format(data))
-    click.echo("from_date={0}".format(from_date))
-    click.echo("to_date={0}".format(to_date))
+    click.echo("item={0}".format(item))
+    click.echo("date={0}".format(date))
+    click.echo("date2={0}".format(date2))
     click.echo("recover={0}".format(recover))
 
     # if not source:
@@ -127,29 +132,30 @@ def dd(source: str, from_date: str, to_date: str = None, data: str = None, recov
 
 
 @click.command()
-@click.option('--date', '-d', help='指定的交易日期，默认今日', type=str)
+@click.option('--date', '-d', help='指定的交易日期，默认今日', type=str, required=False)
 def get_today(date: str = tl.today()):
     """下载今日数据
 
     Args:
         date (str): 指定交易日期
     """
-    # TODO 补充日志输出等内容
-    if not date:
-        date = tl.today()
-    print(date)
+    click.echo("下载今日数据（{0}）".format(tl.today()))
+    # # TODO 补充日志输出等内容
+    # if not date:
+    #     date = tl.today()
+    # print(date)
 
-    unit = TsStockList()
-    unit.download()
+    # unit = TsStockList()
+    # unit.download()
 
-    unit = TsStockDaily()
-    unit.download_by_date(date)
+    # unit = TsStockDaily()
+    # unit.download_by_date(date)
 
 
-@click.command()
-def stat():
-    """ 下载数据统计 """
-    datasouce_stat()
+# @click.command()
+# def stat():
+#     """ 下载数据统计 """
+#     datasouce_stat()
 
 
 # ==============================================
@@ -161,13 +167,9 @@ def astock():
     pass
 
 
-# 数据源清单
-DATA_SOURCE = ['tushare', 'baostock', 'akshare']
-
-
 # 存量数据下载
 @astock.command(name="dl-all")
-@click.option('--source', '-s', help='数据源, 可以选择baostock|efinance|tushare', type=click.Choice(DATA_SOURCE), required=True, prompt="请选择数据源")
+@click.option('--source', '-s', help='数据源, 可以选择baostock|akshare|tushare', type=click.Choice(DATA_SOURCE), required=True, prompt="请选择数据源")
 @click.option('--item', '-i', help='数据项目', type=click.Choice(['cal', 'list', 'daily']), prompt="请选择数据项目")
 @click.option('--date', '-d', help='开始日期', type=click.STRING)
 @click.option('--date2', '-d2', help='终止日期，默认为系统日期今天', type=click.STRING, default=tl.today(), prompt="请输入截止日期 --date2")
@@ -181,13 +183,29 @@ def dlall(source: str, date: str, date2: str = None, item: str = None, recover: 
         to_date (str, optional): 终止日期时间. Defaults to None，默认为系统日期今天.
         recover (bool, optional): 是否用新数据覆盖现有数据. Defaults to False.
     """
-    # TODO 待实现
     click.secho("下载证券历史存量数据", fg="red")
-    click.echo("source={0}".format(source))
-    click.echo("item={0}".format(item))
-    click.echo("date={0}".format(date))
-    click.echo("date2={0}".format(date2))
-    click.echo("recover={0}".format(recover))
+    # 根据数据源、数据项目分开处理
+    if source.lower() == 'tushare':
+        if item.lower() == 'cal':
+            pass
+    elif source.lower() == 'akshare':
+        if item.lower() == 'cal':
+            click.secho("下载Akshare，交易日历全量数据", fg="blue")
+            srv = AkTradeCal()
+            res = srv.download()
+            click.echo(res)
+        else:
+            pass
+    elif source.lower() == 'baostock':
+        pass
+    else:
+        click.secho("非法的数据源！{0}".format(source), fg="red")
+        return
+    # click.echo("source={0}".format(source))
+    # click.echo("item={0}".format(item))
+    # click.echo("date={0}".format(date))
+    # click.echo("date2={0}".format(date2))
+    # click.echo("recover={0}".format(recover))
 
 
 @astock.command()
@@ -225,7 +243,7 @@ def cli():
 
 cli.add_command(cmd=dd, name="download")
 cli.add_command(cmd=get_today, name="today")
-cli.add_command(stat)
+# cli.add_command(stat)
 cli.add_command(siw)
 cli.add_command(cmd=astock, name="astock")
 

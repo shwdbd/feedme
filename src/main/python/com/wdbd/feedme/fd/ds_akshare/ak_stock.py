@@ -517,8 +517,8 @@ class AkStockDaily_EM:
 #     res = srv.download_all()
 #     print(res)
 
-if __name__ == "__main__":
-    srv = AkStockDaily_EM()
-    # res = srv.download_all(stockid_test="688525.SH")
-    res = srv.download_by_date(date="20221215", test_mode=True)
-    print(res)
+# if __name__ == "__main__":
+#     srv = AkStockDaily_EM()
+#     # res = srv.download_all(stockid_test="688525.SH")
+#     res = srv.download_by_date(date="20221215", test_mode=True)
+#     print(res)

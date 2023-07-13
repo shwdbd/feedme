@@ -318,6 +318,31 @@ def records2objlist(pd_df: list, clz):
     return obj_list
 
 
+def get_success_result(msg: str = '', data: list = []):
+    """返回标准成功返回值
+
+    Returns:
+        _type_: _description_
+    """
+    return {
+        "result": True,
+        "message": msg,
+        "data": data
+    }
+
+
+def get_failed_result(msg: str = '', data: list = []):
+    """返回标准失败返回值
+
+    Returns:
+        _type_: _description_
+    """
+    return {
+        "result": False,
+        "message": msg,
+        "data": data
+    }
+
 # if __name__ == "__main__":
 #     # print(get_cfg(section="sqlite3", key="db.path"))
 #     e = get_engine()

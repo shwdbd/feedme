@@ -11,10 +11,26 @@
 import unittest
 from click.testing import CliRunner
 import com.wdbd.feedme.fd.fd_cli as fd_cli
+import com.wdbd.feedme.fd.common.common as tl
 
 
 class TestAStockCLI(unittest.TestCase):
     """ 测试Astock工具 """
+
+    def test_download(self):
+        """ 测试 增量下载 """
+        runner = CliRunner()
+        result = runner.invoke(fd_cli.cli, ['download', '-s', 'tushare',
+                               '-i', 'list', '-d', '20210101', '-d2', '20231231', '-r', 'True'], terminal_width=60)
+        self.assertEqual(0, result.exit_code)
+        self.assertTrue("下载A股股票数据" in result.output)
+
+    def test_today(self):
+        """ 测试 增量下载 """
+        runner = CliRunner()
+        result = runner.invoke(fd_cli.cli, ['today'], terminal_width=60)
+        self.assertEqual(0, result.exit_code)
+        self.assertTrue("下载今日数据（{0}）".format(tl.today() in result.output))
 
     def test_astock_dlall(self):
         """ 测试 下载历史存量数据 """
@@ -44,8 +60,9 @@ class TestAStockCLI(unittest.TestCase):
 # if __name__ == "__main__":
 #     runner = CliRunner()
 #     # result = runner.invoke(fd_cli.cli, ['astock', 'omit', '-d2', '9999000011'], terminal_width=60, input='20040822\n')
-#     result = runner.invoke(fd_cli.cli, ['astock', 'dl-all', '-s', 'tushare',
-#                            '-i', 'list', '-d', '20210101', '-d2', '20231231'], terminal_width=60)
+#     # result = runner.invoke(fd_cli.cli, ['download', '-s', 'tushare',
+#     #                            '-i', 'list', '-d', '20210101', '-d2', '20231231', '-r', 'True'], terminal_width=60)
+#     result = runner.invoke(fd_cli.cli, ['download'])
 #     print(result)
 #     print(result.exit_code)
 #     print(result.output)
