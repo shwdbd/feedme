@@ -14,6 +14,7 @@ from com.wdbd.feedme.fd.common.common import records2objlist, get_session, get_l
 from com.wdbd.feedme.fd.orm.ods_tables import OdsTushareTradeCal, OdsTushareStockBasic, OdsTushareDaily
 import pandas as pd
 import sqlalchemy
+import com.wdbd.feedme.fd.common.common as tl
 
 
 # 交易所 交易日历
@@ -187,12 +188,14 @@ class TsStockDaily:
             DsStatTool.log(id=self.DS_ID, end_bar=trade_date)
 
             log.debug("下载更新完成")
-            return {"result": True, "msg": []}
+            res = tl.get_success_result(msg="按日下载Tushare股票日线数据完毕，共计{0}支股票".format(len(obj_list)))           
+            return res
         except Exception as err:
-            err_msg = "下载Tushare A股股票日线时遇到异常，SQL异常:" + str(err)
+            err_msg = "下载Tushare A股股票日线时遇到异常, 异常:" + str(err)
             log.error(err_msg)
             session.rollback()
-            return {"result": False, "msg": [err_msg]}
+            return tl.get_failed_result(msg=err_msg)
+            # return {"result": False, "msg": [err_msg]}
         finally:
             session.close()
 
@@ -276,6 +279,8 @@ class TsStockDaily:
             DsStatTool.log(id=self.DS_ID, start_bar=first_bar, end_bar=last_bar)
 
             log.debug("全部下载完成！")
+            
+            # FIXME　返回值
         except Exception as err:
             err_msg = "下载Tushare A股股票历史全量日线时遇到异常，SQL异常:" + str(err)
             log.error(err_msg)
@@ -292,12 +297,15 @@ class TsStockDaily:
 #     res = srv.download_all()
 #     print(res)
 
-# if __name__ == "__main__":
-#     srv = TsStockDaily()
-#     res = srv.download_by_stock("600016.SH")
-#     print(res)
-
 if __name__ == "__main__":
-    srv = TsTradeCal()
-    res = srv.download_all()
+    tl.TEST_MODE = True
+    srv = TsStockDaily()
+    # res = srv.download_by_stock("600016.SH")
+    # print(res)
+    res = srv.download_by_date(trade_date="20230719")
     print(res)
+
+# if __name__ == "__main__":
+#     srv = TsTradeCal()
+#     res = srv.download_all()
+#     print(res)

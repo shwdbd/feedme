@@ -15,45 +15,6 @@ import sqlalchemy
 from com.wdbd.feedme.fd.common.data_gateway import DsStatTool
 import com.wdbd.feedme.fd.common.common as tl
 
-# # 股票交易日历
-# class AkTradeCal:
-#     """ Akshare交易日历 数据下载 """
-
-#     def download(self):
-#         """下载全量
-
-#         Returns:
-#             result: 处理结果
-#         """
-#         # EFFECTS:
-#         # 1. 从web api获取数据，dataframe
-#         # 2. 转成list，然后全量更新数据库
-#         # END
-#         log = tl.get_logger()
-
-#         try:
-#             log.info("下载Akshare 交易日历全量数据")
-#             # 从web api获取数据，dataframe
-#             tool_trade_date_hist_sina_df = ak.tool_trade_date_hist_sina()
-#             obj_list = records2objlist(tool_trade_date_hist_sina_df, OdsAkshareTradeCal)
-#             log.debug("获得日历数据{0}条".format(len(obj_list)))
-
-#             # 写入数据库
-#             session = get_session()
-#             session.query(OdsAkshareTradeCal).delete()      # 清除表数据
-#             session.bulk_save_objects(obj_list)
-#             session.commit()
-
-#             log.info("下载Akshare 交易日历全量数据 完成!")
-#             return tl.get_success_result(msg='下载完成')
-#         except Exception as err:
-#             err_msg = "下载Akshare交易日历时遇到异常, 异常:" + str(err)
-#             log.error(err_msg)
-#             session.rollback()
-#             return tl.get_failed_result(msg=err_msg)
-#         finally:
-#             session.close()
-
 
 class AkTradeCal:
     """ Akshare 交易日历数据下载 """
@@ -62,9 +23,9 @@ class AkTradeCal:
         self.DS_ID = "akshare.cal"    # 数据源ID
 
     def download(self):
-        """ 下载并更新本地ods表ods_akshare_tool_trade_date_hist_sina """
+        """ 下载并更新本地 ods 表 ods_akshare_tool_trade_date_hist_sina """
         log = get_logger()
-        log.info("下载Akshare 交易日历全量数据")
+        log.info("下载Akshare 交易日历全量历史数据")
 
         try:
             # 取得数据

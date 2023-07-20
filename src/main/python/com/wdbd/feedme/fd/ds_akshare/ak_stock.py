@@ -45,15 +45,15 @@ class AkCNStockList:
             if df is None or df.shape[0] == 0:
                 err_msg = "接口返回空数据，下载失败！"
                 log.error(err_msg)
-                return {"result": False, "msg": [err_msg]}
+                return tl.get_failed_result(msg=err_msg)
             df.rename(columns={"代码": "stock_id", "名称": "name"}, inplace=True)
             obj_list = records2objlist(df, OdsAkshareStock)
 
             # 如果有数据，则del and insert数据库
             try:
                 session = get_session()
-                session.query(OdsAkshareStock).delete()      # 清除表数据
-                session.bulk_save_objects(obj_list)
+                for stock in obj_list:
+                    session.merge(stock)
                 session.commit()
 
                 # 更新统计表
@@ -67,19 +67,20 @@ class AkCNStockList:
                 msg = "下载股票{0}支，各交易所股票数量为：{1}".format(
                     count_of_stock[0], results)
                 log.debug(msg)
-
-                return {"result": True, "msg": [msg]}
+                res = tl.get_success_result(msg=msg)
+                return res
             except Exception as err:
                 err_msg = "下载Akshare A股股票清单时遇到异常，SQL异常:" + str(err)
                 log.error(err_msg)
                 session.rollback()
-                return {"result": False, "msg": [err_msg]}
+                res = tl.get_failed_result(msg=err_msg)
+                return res
             finally:
                 session.close()
         except Exception as err:
             err_msg = "下载Akshare A股股票清单时遇到异常，" + str(err)
             log.error(err_msg)
-            return {"result": False, "msg": [err_msg]}
+            return tl.get_failed_result(msg=err_msg)
 
 
 # 网易，股票日线
@@ -489,10 +490,11 @@ class AkStockDaily_EM:
             session.close()
 
 
-# if __name__ == "__main__":
-#     srv = AkCNStockList()
-#     res = srv.download()
-#     print(res)
+if __name__ == "__main__":
+    tl.TEST_MODE = True
+    srv = AkCNStockList()
+    res = srv.download()
+    print(res)
 
 # if __name__ == "__main__":
 #     # srv = AkStockDaily_163()
