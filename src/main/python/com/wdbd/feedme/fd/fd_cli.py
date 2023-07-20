@@ -12,7 +12,7 @@ import click
 from com.wdbd.feedme.fd.ds_baostock.bs_stock import SecurityListUnit as bs_SecurityListUnit, CnStockDailyK as bs_CnStockDailyK
 from com.wdbd.feedme.fd.ds_efinance.ef_stock import SecurityListUnit as ef_SecurityListUnit, CnStockDailyK as ef_CnStockDailyK
 # from com.wdbd.feedme.fd.ds_akshare.ak_cal import AkTradeCal
-from com.wdbd.feedme.fd.ds_akshare import download_ak_cal, download_ak_stock_list
+from com.wdbd.feedme.fd.ds_akshare import download_ak_cal, download_ak_stock_list, download_ak_stock_daily_EM_all
 from com.wdbd.feedme.fd.tools.data_comparor import datasouce_stat
 from com.wdbd.feedme.fd.ds_tushare.ts_stock import TsTradeCal, TsStockDaily, TsStockList
 import com.wdbd.feedme.fd.common.common as tl
@@ -201,6 +201,14 @@ def dlall(source: str, date: str, date2: str = None, item: str = None, recover: 
         elif item.lower() == 'list':
             click.secho("下载更新Akshare股票清单", fg="blue")
             res = download_ak_stock_list()
+            if not res or res["result"] is False:
+                click.secho("下载失败", fg="red")
+                click.secho(res["message"], fg="red")
+            else:
+                click.secho("下载成功！", fg="blue")
+        elif item.lower() == 'daily':
+            click.secho("下载更新Akshare日线数据", fg="blue")
+            res = download_ak_stock_daily_EM_all()
             if not res or res["result"] is False:
                 click.secho("下载失败", fg="red")
                 click.secho(res["message"], fg="red")

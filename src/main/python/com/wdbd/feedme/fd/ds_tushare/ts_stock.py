@@ -152,10 +152,11 @@ class TsStockDaily:
         # 下载更新
         log = get_logger()
         if not trade_date:
-            log.error("交易日期为空，下载终止！")
-            return {"result": False, "msg": ["交易日期为空"]}
+            err_msg = "交易日期为空，下载终止！"
+            log.error(err_msg)
+            return tl.get_failed_result(msg=err_msg)
 
-        log.debug("下载更新Tushare A股日线数据 [date={0}]".format(trade_date))
+        log.debug("开始按日更新Tushare A股日线数据 [date={0}]".format(trade_date))
 
         gw = TushareGateWay()
         if stock_id:

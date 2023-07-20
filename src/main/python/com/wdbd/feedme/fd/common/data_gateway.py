@@ -31,6 +31,7 @@ import pandas as pd
 # import efinance as ef
 from com.wdbd.feedme.fd.orm.ods_tables import OdsDsStat
 from sqlalchemy import func
+import akshare as ak
 
 
 # 数据源列表
@@ -354,7 +355,9 @@ class EFinanceGateWay:
 
 
 class AkshareGateWay:
-    """ Akshare数据网关 """
+    """ Akshare数据网关 
+    目前只提供格式转换功能
+    """
 
     def __init__(self):
         pass
@@ -500,9 +503,15 @@ class DsStatTool:
 #     print(df)
 #     print(df.shape[0])
 
+# if __name__ == "__main__":
+#     gw = AkshareGateWay()
+#     res = gw.symbol_2_tscode("sh600016")
+#     print(res)
+#     res = gw.tscode_2_symbol("600016.SH")
+#     print(res)
+
 if __name__ == "__main__":
     gw = AkshareGateWay()
-    res = gw.symbol_2_tscode("sh600016")
-    print(res)
-    res = gw.tscode_2_symbol("600016.SH")
+    res = ak.stock_zh_a_hist(period="daily", symbol=['600016', '000001'], 
+                                    start_date='20230719', end_date='20230719', adjust="")
     print(res)
