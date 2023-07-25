@@ -10,6 +10,7 @@
 '''
 import com.wdbd.feedme.fd.ds_tushare.fd_api_impl as tushare_impl
 import com.wdbd.feedme.fd.ds_akshare.fd_api_impl as akshare_impl
+import com.wdbd.feedme.fd.common.common as tl
 
 
 # 当前最新的数据日期
@@ -92,3 +93,21 @@ def get_stockid(return_type: str = "tushare", exchange: str = None, stock_status
         list<str>: 股票代码列表
     """
     return akshare_impl.get_stockid(return_type, exchange, stock_status)
+
+
+# 返回日期范围
+def get_dates(start: str = None, is_trade_date_only: bool = True, end: str = tl.today(), source: str = "akshare") -> list:
+    """返回日期范围
+
+    Args:
+        start (str, optional): 开始日期，默认为最早日期
+        is_trade_date_only (bool, optional): 是否仅返回交易日？ Defaults to True.
+        end (str, optional): 截止日期. Defaults to 今日.
+        source (str, optional): 数据源. Defaults to "akshare".
+
+    Returns:
+        list: _description_
+    """
+    if source.lower() == 'akshare':
+        return akshare_impl.get_dates(start=start, is_trade_date_only=is_trade_date_only, end=end, source=source)
+    return []

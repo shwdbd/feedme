@@ -8,8 +8,8 @@
 @Contact :   shwangjj@163.com
 @Desc    :   ODS层的数据库表
 '''
-from com.wdbd.feedme.fd.common.common import Base
-from sqlalchemy import Column, String, FLOAT
+from com.wdbd.feedme.fd.common.common import Base, get_session
+from sqlalchemy import Column, String, FLOAT, Integer
 
 
 class OdsTushareTradeCal(Base):
@@ -144,6 +144,25 @@ class OdsAkshareStockDaily_EM(Base):
         return "Akshare A股日线[{0}, {1}] ".format(self.symbol, self.trade_date)
 
 
+class OdsAkshareStockDaily_Sina(Base):
+    """ akshare A股日线行情（新浪，未复权） """
+
+    __tablename__ = 'ods_akshare_stock_daily_sina'
+
+    trade_date = Column(String(50), primary_key=True)
+    symbol = Column(String(50), primary_key=True)
+    p_open = Column(FLOAT())
+    p_close = Column(FLOAT())
+    p_high = Column(FLOAT())
+    p_low = Column(FLOAT())
+    volume = Column(FLOAT())
+    outstanding_share = Column(FLOAT())
+    turnover = Column(FLOAT())
+
+    def __repr__(self) -> str:
+        return "Akshare A股日线新浪[{0}, {1}] ".format(self.symbol, self.trade_date)
+
+
 class OdsAkshareStock(Base):
     """ Akshare股票清单表 """
 
@@ -187,6 +206,29 @@ class OdsBankstockFrHandleLog(Base):
 
     def __repr__(self) -> str:
         return "银行财报处理情况表 [{0} {1}] ".format(self.stockid, self.fr_date)
+
+
+class OdsAkshareCCTVNews(Base):
+    """ Akshare 新闻联播文字版 """
+
+    __tablename__ = 'ods_akshare_cctv_news'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    trade_date = Column(String(20))
+    title = Column(String(100))
+    content = Column(String(2000))
+
+    def __repr__(self) -> str:
+        return "Akshare 新闻联播文字版 [{0} {1}] ".format(self.id, self.trade_date)
+
+
+# if __name__ == "__main__":
+#     session = get_session()
+#     obj = OdsAkshareCCTVNews(trade_date="20000101", title="", content='fasdfdsfafa')
+#     data = [obj]
+#     session.add_all(data)
+#     session.commit()
+#     session.close()
 
 # if __name__ == "__main__":
 #     session = get_session()

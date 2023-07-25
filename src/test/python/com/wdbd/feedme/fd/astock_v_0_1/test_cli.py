@@ -35,7 +35,10 @@ class TestAStockCLI(unittest.TestCase):
     def test_astock_dlall(self):
         """ 测试 下载历史存量数据 """
         runner = CliRunner()
-        result = runner.invoke(fd_cli.cli, ['astock', 'dl-all', '-s', 'tushare',
+        # result = runner.invoke(fd_cli.cli, ['astock', 'dl-all', '-s', 'tushare',
+        #                        '-i', 'list', '-d', '20210101', '-d2', '20231231'], terminal_width=60)
+        # self.assertEqual(0, result.exit_code)
+        result = runner.invoke(fd_cli.cli, ['astock', 'dl-all', '-s', 'akshare',
                                '-i', 'list', '-d', '20210101', '-d2', '20231231'], terminal_width=60)
         self.assertEqual(0, result.exit_code)
         self.assertTrue("下载证券历史存量数据" in result.output)

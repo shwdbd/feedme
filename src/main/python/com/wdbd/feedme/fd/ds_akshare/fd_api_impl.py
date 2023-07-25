@@ -9,7 +9,10 @@
 @Desc    :   数据接口的Tushare实现
 '''
 from com.wdbd.feedme.fd.common.common import get_session, get_logger
-from com.wdbd.feedme.fd.orm.ods_tables import OdsAkshareStock
+from com.wdbd.feedme.fd.orm.ods_tables import OdsAkshareStock, OdsAkshareTradeCal
+from sqlalchemy import and_
+import com.wdbd.feedme.fd.common.common as tl
+from datetime import datetime, timedelta
 
 
 def get_last_date() -> str:
@@ -200,6 +203,53 @@ def get_stockid(return_type: str = "tushare", exchange: str = None, stock_status
     finally:
         session.close()
 
+
+# 返回日期范围
+def get_dates(start: str = None, is_trade_date_only: bool = True, end: str = tl.today(), source: str = "akshare") -> list:
+    """返回日期范围
+
+    Args:
+        start (str, optional): 开始日期，默认为最早日期
+        is_trade_date_only (bool, optional): 是否仅返回交易日？ Defaults to True.
+        end (str, optional): 截止日期. Defaults to 今日.
+        source (str, optional): 数据源. Defaults to "akshare".
+
+    Returns:
+        list: 日期范围
+    """
+    if is_trade_date_only:
+        # 交易日，从数据库中读取
+        try:
+            session = get_session()
+            query = session.query(OdsAkshareTradeCal).filter(and_(OdsAkshareTradeCal.trade_date >= start, OdsAkshareTradeCal.trade_date <= end))
+            query.order_by(OdsAkshareTradeCal.trade_date.asc())
+            dates_obj = query.all()
+            res = []
+            for obj in dates_obj:
+                res.append(obj.trade_date)
+            return res
+        except Exception as err:
+            get_logger().error("查看日期范围，出现异常：" + str(err))
+            return []
+        finally:
+            session.close()
+    else:
+        # 非交易日
+        s_date = datetime.strptime(start, tl.DATE_FORMAT)
+        e_date = datetime.strptime(end, tl.DATE_FORMAT)
+        res = []
+        while s_date <= e_date:
+            res.append(datetime.strftime(s_date, tl.DATE_FORMAT))
+            s_date += timedelta(days=1)
+        return res
+
+
+if __name__ == "__main__":
+    print(get_dates(start="20230701", end="20230705"))
+    print(get_dates(start="20230705", end="20230701"))
+    # 非交易日
+    print(get_dates(start="20230701", end="20230705", is_trade_date_only=False))
+    print(get_dates(start="20230703", end="20230701", is_trade_date_only=False))
 
 # if __name__ == "__main__":
 # #     print(has_data("20181121"))

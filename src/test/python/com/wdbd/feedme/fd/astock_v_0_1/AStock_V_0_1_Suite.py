@@ -9,6 +9,7 @@
 @Desc    :   AStock V0.1 单元测试套件
 '''
 import unittest
+import com.wdbd.feedme.fd.common.common as tl
 
 
 def get_suite():
@@ -18,6 +19,7 @@ def get_suite():
 
 
 if __name__ == "__main__":
+    tl.TEST_MODE = True
     runner = unittest.TextTestRunner(verbosity=2)
     runner.run(get_suite())
 

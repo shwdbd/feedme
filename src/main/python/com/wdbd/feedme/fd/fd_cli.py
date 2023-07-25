@@ -12,7 +12,7 @@ import click
 from com.wdbd.feedme.fd.ds_baostock.bs_stock import SecurityListUnit as bs_SecurityListUnit, CnStockDailyK as bs_CnStockDailyK
 from com.wdbd.feedme.fd.ds_efinance.ef_stock import SecurityListUnit as ef_SecurityListUnit, CnStockDailyK as ef_CnStockDailyK
 # from com.wdbd.feedme.fd.ds_akshare.ak_cal import AkTradeCal
-from com.wdbd.feedme.fd.ds_akshare import download_ak_cal, download_ak_stock_list, download_ak_stock_daily_EM_all
+from com.wdbd.feedme.fd.ds_akshare import download_ak_cal, download_ak_stock_list, download_ak_stock_daily_EM_all, download_ak_stock_daily_EM_bydate, download_ak_cctvnews, download_ak_cctvnews_bydate
 from com.wdbd.feedme.fd.tools.data_comparor import datasouce_stat
 from com.wdbd.feedme.fd.ds_tushare.ts_stock import TsTradeCal, TsStockDaily, TsStockList
 import com.wdbd.feedme.fd.common.common as tl
@@ -25,9 +25,9 @@ DATA_SOURCE = ['tushare', 'baostock', 'akshare']
 
 # 数据下载
 @click.command()
-@click.option('--source', '-s', help='数据源, 可以选择baostock|efinance|tushare', type=click.Choice(DATA_SOURCE), default="tushare")
-@click.option('--item', '-i', help='数据项目, 如: trade_cal', type=click.STRING)
-@click.option('--date', '-d', help='开始日期', type=click.STRING)
+@click.option('--source', '-s', help='数据源, 可以选择baostock|efinance|tushare', type=click.Choice(DATA_SOURCE), default="tushare", prompt="数据源")
+@click.option('--item', '-i', help='数据项目', type=click.Choice(['cal', 'list', 'daily', 'cctvnews']), prompt="请选择数据项目")
+@click.option('--date', '-d', help='开始日期', type=click.STRING, prompt="开始日期")
 @click.option('--date2', '-d2', help='终止日期，默认为系统日期今天', type=click.STRING, default=tl.today())
 @click.option('--recover', '-r', help='已有数据是否覆盖, 默认为False', type=click.BOOL, default=False)
 def dd(source: str, date: str, date2: str = None, item: str = None, recover: bool = False):
@@ -39,14 +39,44 @@ def dd(source: str, date: str, date2: str = None, item: str = None, recover: boo
         to_date (str, optional): 终止日期时间. Defaults to None，默认为系统日期今天.
         recover (bool, optional): 是否用新数据覆盖现有数据. Defaults to False.
     """
-    # click.echo('下载A股股票数据')
-    click.secho('下载A股股票数据', fg='red')
+    click.secho("下载A股股票数据", fg="red")
 
-    click.echo("source={0}".format(source))
-    click.echo("item={0}".format(item))
-    click.echo("date={0}".format(date))
-    click.echo("date2={0}".format(date2))
-    click.echo("recover={0}".format(recover))
+    if source.lower() == 'tushare':
+        if item.lower() == 'cal':
+            pass
+    elif source.lower() == 'akshare':
+        if item.lower() == 'daily':
+            click.secho("下载更新Akshare 增量日线数据", fg="blue")
+            res = download_ak_stock_daily_EM_bydate(date)      # TODO 按日下载
+            if not res or res["result"] is False:
+                click.secho("下载失败", fg="red")
+                click.secho(res["message"], fg="red")
+            else:
+                click.secho("下载成功！", fg="blue")
+        elif item.lower() == 'cctvnews':
+            click.secho("下载更新Akshare 增量日线数据", fg="blue")
+            res = download_ak_cctvnews_bydate(date)
+            if not res or res["result"] is False:
+                click.secho("下载失败", fg="red")
+                click.secho(res["message"], fg="red")
+            else:
+                click.secho("下载成功！", fg="blue")
+        else:
+            pass
+    elif source.lower() == 'baostock':
+        # TODO 待实现
+        pass
+    else:
+        click.secho("非法的数据源！{0}".format(source), fg="red")
+        return
+    # # click.echo('下载A股股票数据')
+    # click.secho('下载A股股票数据', fg='red')
+
+    # click.echo("source={0}".format(source))
+    # click.echo("item={0}".format(item))
+    # click.echo("date={0}".format(date))
+    # click.echo("date2={0}".format(date2))
+    # click.echo("recover={0}".format(recover))
 
     # if not source:
     #     click.echo('数据源参数为空。请使用 --help 观看提示')
@@ -171,7 +201,7 @@ def astock():
 # 存量数据下载
 @astock.command(name="dl-all")
 @click.option('--source', '-s', help='数据源, 可以选择baostock|akshare|tushare', type=click.Choice(DATA_SOURCE), required=True, prompt="请选择数据源")
-@click.option('--item', '-i', help='数据项目', type=click.Choice(['cal', 'list', 'daily']), prompt="请选择数据项目")
+@click.option('--item', '-i', help='数据项目', type=click.Choice(['cal', 'list', 'daily', 'cctvnews']), prompt="请选择数据项目")
 @click.option('--date', '-d', help='开始日期', type=click.STRING)
 @click.option('--date2', '-d2', help='终止日期，默认为系统日期今天', type=click.STRING, default=tl.today(), prompt="请输入截止日期 --date2")
 @click.option('--recover', '-r', help='已有数据是否覆盖, 默认为False', type=click.BOOL, default=False)
@@ -190,6 +220,7 @@ def dlall(source: str, date: str, date2: str = None, item: str = None, recover: 
         if item.lower() == 'cal':
             pass
     elif source.lower() == 'akshare':
+        # Akshare 数据源
         if item.lower() == 'cal':
             click.secho("下载Akshare，交易日历全量数据", fg="blue")
             res = download_ak_cal()
@@ -214,9 +245,18 @@ def dlall(source: str, date: str, date2: str = None, item: str = None, recover: 
                 click.secho(res["message"], fg="red")
             else:
                 click.secho("下载成功！", fg="blue")
+        elif item.lower() == 'cctvnews':
+            click.secho("下载 新闻联播文字稿", fg="blue")
+            res = download_ak_cctvnews()
+            if not res or res["result"] is False:
+                click.secho("下载失败", fg="red")
+                click.secho(res["message"], fg="red")
+            else:
+                click.secho("下载成功！", fg="blue")
         else:
             pass
     elif source.lower() == 'baostock':
+        # TODO 待实现
         pass
     else:
         click.secho("非法的数据源！{0}".format(source), fg="red")

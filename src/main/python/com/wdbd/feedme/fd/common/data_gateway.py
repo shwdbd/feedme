@@ -41,8 +41,10 @@ DATA_SOURCES = {
     "tushare.daily": "tushareA股日线行情（未复权）",
     "akshare.cal": "Akshare交易日历",
     "akshare.cnstock_list": "AkshareA股股票清单",
-    "akshare.cnstock_daily_163": "AkshareA股日线 网易",
+    # "akshare.cnstock_daily_163": "AkshareA股日线 网易",
     "akshare.cnstock_daily_em": "AkshareA股日线 东财",
+    "akshare.cnstock_daily_sina": "AkshareA股日线 新浪",
+    "akshare.cctv_news": "Akshare新闻联播文字稿",
 }
 
 
@@ -355,7 +357,7 @@ class EFinanceGateWay:
 
 
 class AkshareGateWay:
-    """ Akshare数据网关 
+    """ Akshare 数据网关
     目前只提供格式转换功能
     """
 
@@ -396,6 +398,19 @@ class DsStatTool:
     """ 数据源统计表的工具 """
 
     @staticmethod
+    def get(id: str) -> OdsDsStat:
+        """ 查询并返回 """
+        try:
+            session = tl.get_session()
+            record = session.query(OdsDsStat).filter(OdsDsStat.ds_id == id).one_or_none()
+            return record
+        except Exception as err:
+            tl.get_logger().error("统计表 SQL异常:" + str(err))
+            return None
+        finally:
+            session.close()
+
+    @staticmethod
     def log(id: str, end_bar: str, name: str = None, start_bar: str = "", missing_bar: str = "", notes: str = "") -> bool:
         """登记统计信息
 
@@ -421,7 +436,7 @@ class DsStatTool:
                 record.end_bar = max(end_bar, record.end_bar)
                 # record.end_bar = end_bar
                 if start_bar != '':
-                    record.start_bar = start_bar
+                    record.start_bar = min(start_bar, record.start_bar)
                 if missing_bar != '':
                     record.missing_bar = missing_bar
                 if notes != '':
@@ -512,6 +527,6 @@ class DsStatTool:
 
 if __name__ == "__main__":
     gw = AkshareGateWay()
-    res = ak.stock_zh_a_hist(period="daily", symbol=['600016', '000001'], 
+    res = ak.stock_zh_a_hist(period="daily", symbol=['600016', '000001'],
                                     start_date='20230719', end_date='20230719', adjust="")
     print(res)
