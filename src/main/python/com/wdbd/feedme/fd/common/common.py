@@ -318,7 +318,7 @@ def records2objlist(pd_df: list, clz):
     return obj_list
 
 
-def get_success_result(msg: str = '', data: list = []):
+def get_success_result(msg: str = '', data: dict = {}):
     """返回标准成功返回值
 
     Returns:
@@ -331,7 +331,7 @@ def get_success_result(msg: str = '', data: list = []):
     }
 
 
-def get_failed_result(msg: str = '', data: list = []):
+def get_failed_result(msg: str = '', data: dict = {}):
     """返回标准失败返回值
 
     Returns:

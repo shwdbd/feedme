@@ -50,7 +50,7 @@ class OdsDsStat(Base):
     notes = Column(String(500))
 
     def __repr__(self) -> str:
-        return "数据源统计表[{0}, {1}, {2}:{3}] ".format(self.ds_name, self.end_bar, self.start_bar, self.end_bar)
+        return "数据源统计表[{0}, {1}, {2}:{3}, {4}] ".format(self.ds_name, self.end_bar, self.start_bar, self.end_bar, self.missing_bar)
 
 
 class OdsTushareStockBasic(Base):

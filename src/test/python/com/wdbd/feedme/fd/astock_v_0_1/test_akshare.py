@@ -36,7 +36,7 @@ class TestAkCCTVNews(unittest.TestCase):
         srv = AkCCTVNews()
         res = srv.download_bydate("20230724", is_log_stat=True)
         msg = "下载Akshare新闻联播文字稿，日期=20230724，新闻条数=15"
-        self.assertDictEqual({"result": True, "message": msg, 'data': []}, res)
+        self.assertDictEqual({"result": True, "message": msg, 'data': {}}, res)
 
         session = tl.get_session()
         # 检查表中记录数量
@@ -99,7 +99,7 @@ class TestAkTradeCal(unittest.TestCase):
         res = srv.download()
         msg = "下载Akshare日历全量数据完毕，{0}到{1} 共8070个交易日".format(
             first_date, end_date)
-        self.assertDictEqual({"result": True, "message": msg, 'data': []}, res)
+        self.assertDictEqual({"result": True, "message": msg, 'data': {}}, res)
 
         session = tl.get_session()
         # 检查表中记录数量
@@ -146,9 +146,9 @@ class TestAkStockList(unittest.TestCase):
         srv = AkCNStockList()
         res = srv.download()
         # msg = "下载股票5476支，各交易所股票数量为：[('BJE', 210), ('SSE', 2334), ('SZE', 2931), ('XXX', 1)]"
-        # self.assertDictEqual({"result": True, "message": msg, 'data': []}, res)
+        # self.assertDictEqual({"result": True, "message": msg, 'data': {}}, res)
         self.assertTrue(res["result"])
-        # self.assertDictEqual({"result": True, "message": msg, 'data': []}, res)
+        # self.assertDictEqual({"result": True, "message": msg, 'data': {}}, res)
 
         session = tl.get_session()
         # 检查表中记录数量
@@ -189,7 +189,7 @@ class TestAkStockDaily_EM(unittest.TestCase):
         srv = AkStockDaily_EM()
         res = srv.download_by_date(trade_date, test_mode=True)
         msg = "按日下载Akshare股票日线数据(日期{0}), 记录数{1}".format(trade_date, 16)
-        self.assertDictEqual({"result": True, "message": msg, 'data': []}, res)
+        self.assertDictEqual({"result": True, "message": msg, 'data': {}}, res)
 
         session = tl.get_session()
         # 检查表中记录数量
@@ -218,7 +218,7 @@ class TestAkStockDaily_EM(unittest.TestCase):
         srv = AkStockDaily_EM()
         res = srv.download_by_stock(stock_id, start_date=trade_date, end_date='20230719')
         msg = "按股下载Akshare股票日线数据(代码：{0}), 更新记录{1}条".format(stock_id, 8)
-        self.assertDictEqual({"result": True, "message": msg, 'data': []}, res)
+        self.assertDictEqual({"result": True, "message": msg, 'data': {}}, res)
 
         session = tl.get_session()
         # # 检查表中记录数量

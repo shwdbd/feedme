@@ -34,7 +34,7 @@ class TestTsDaily(unittest.TestCase):
         srv = TsStockDaily()
         res = srv.download_by_date(trade_date=trade_date)
         msg = "按日下载Tushare股票日线数据完毕，共计{0}支股票".format(record_count)
-        self.assertDictEqual({"result": True, "message": msg, 'data': []}, res)
+        self.assertDictEqual({"result": True, "message": msg, 'data': {}}, res)
 
         session = tl.get_session()
         # 检查表中记录数量

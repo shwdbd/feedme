@@ -398,6 +398,27 @@ class DsStatTool:
     """ 数据源统计表的工具 """
 
     @staticmethod
+    def update(stat: OdsDsStat) -> OdsDsStat:
+        """ 查询并返回 """
+        try:
+            # print(stat.ds_id)
+            session = tl.get_session()
+            record = session.query(OdsDsStat).filter(OdsDsStat.ds_id == stat.ds_id).one_or_none()
+            # print(record)
+            record.start_bar = stat.start_bar
+            record.last_bar = stat.last_bar
+            record.missing_bar = stat.missing_bar
+            # print(stat.missing_bar)
+            session.commit()
+            return record
+        except Exception as err:
+            tl.get_logger().error("统计表 SQL异常:" + str(err))
+            return None
+        finally:
+            session.close()
+
+
+    @staticmethod
     def get(id: str) -> OdsDsStat:
         """ 查询并返回 """
         try:
