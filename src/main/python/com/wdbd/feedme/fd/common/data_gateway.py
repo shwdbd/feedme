@@ -417,7 +417,6 @@ class DsStatTool:
         finally:
             session.close()
 
-
     @staticmethod
     def get(id: str) -> OdsDsStat:
         """ 查询并返回 """

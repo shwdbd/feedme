@@ -1,0 +1,7 @@
+{
+    "name": "Tushare_astock_d",
+    "desc": "Tushare日终后数据下载",
+    "run_windows": [],
+    "actions": {
+    }
+}

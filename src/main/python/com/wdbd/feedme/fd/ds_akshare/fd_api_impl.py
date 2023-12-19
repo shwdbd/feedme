@@ -234,9 +234,14 @@ def get_dates(start: str = None, is_trade_date_only: bool = True, end: str = tl.
         finally:
             session.close()
     else:
-        # 非交易日
-        s_date = datetime.strptime(start, tl.DATE_FORMAT)
-        e_date = datetime.strptime(end, tl.DATE_FORMAT)
+        # 包括非交易日
+        try:
+            s_date = datetime.strptime(start, tl.DATE_FORMAT)
+            e_date = datetime.strptime(end, tl.DATE_FORMAT)
+        except ValueError:
+            err_msg = "日期格式错误，{0}, {1}".format(start, end)
+            tl.get_logger().error(err_msg)
+            raise Exception(err_msg)
         res = []
         while s_date <= e_date:
             res.append(datetime.strftime(s_date, tl.DATE_FORMAT))

@@ -118,4 +118,4 @@ class TestOtherToolsFunc(unittest.TestCase):
         self.assertIsNone(obj)
         obj = tl.record2object(record=[], obj=self.DataStruct)
         self.assertIsNone(obj)
-        
+   

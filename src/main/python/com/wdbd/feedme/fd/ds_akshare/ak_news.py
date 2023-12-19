@@ -10,8 +10,8 @@
 '''
 import akshare as ak
 from com.wdbd.feedme.fd.common.common import get_logger, get_session, records2objlist
-from com.wdbd.feedme.fd.orm.ods_tables import OdsAkshareCCTVNews, OdsAkshareTradeCal
-from com.wdbd.feedme.fd.common.data_gateway import DsStatTool, OdsDsStat
+from com.wdbd.feedme.fd.orm.ods_tables import OdsAkshareCCTVNews
+from com.wdbd.feedme.fd.common.data_gateway import DsStatTool
 import com.wdbd.feedme.fd.common.common as tl
 import com.wdbd.feedme.fd.fd_api as fd_api
 import sqlalchemy
