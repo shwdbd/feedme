@@ -1,0 +1,58 @@
+{
+    "组ABC": { 
+        "name": "组A",
+        "desc": "关于这个组的说明",
+        "rules": {
+            "run_windows": [["0900", "1030"], ["1600", "1700"]], 
+            "on_error": "continue", 
+            "interval_time": "30m"
+        },
+        "actions": {
+            "Tushare_A股清单": {
+                "desc": "下载股票清单",
+                "class": "com.xxx.DemoAction_A",
+                "rules": {
+                    "run_windows": [
+                        ["1000", "1230"],
+                        ["1600", "2000"]
+                        ],
+                    "daily_once": true
+                }
+            },
+            "清单2": {
+                "desc": "下载股票清单",
+                "class": "com.xxx.DemoAction_A",
+                "rules": {
+                    "run_windows": [
+                        ["1000", "1230"],
+                        ["1600", "2000"]
+                        ],
+                    "daily_once": true
+                }
+            }
+        }
+    },
+    "组DEF": {
+        "name": "组DEF",
+        "desc": "关于这个组的说明",
+        "rules": {
+            "run_windows": [],
+            "on_error": "continue",
+            "interval_time": "30m"
+        },
+        "actions": {
+            "Tushare_A股清单": {
+                "desc": "下载股票清单",
+                "class": "com.xxx.DemoAction_A", 
+                "rules": {
+                    "run_windows": [
+                        ["1000", "1230"],
+                        ["1600", "2000"]
+                        ],
+                    "daily_once": true
+                }
+            }
+        }
+    }
+}
+

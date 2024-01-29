@@ -47,7 +47,7 @@
         },
         "TEST": {
             "foreground": "yellow",
-            "background": "grey",
+            "background": "blue",
             "iconColour": "red",
             "gutterIcon": true,
             "opacity": 50,

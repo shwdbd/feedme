@@ -1,13 +1,12 @@
 {
-    "name": "开发用组",
+    "name": "开发组A",
     "desc": "关于这个组的说明",
-    "run_windows": [],
+    "run_windows": [["0001", "2459"]],
     "interval_minutes": 60,
-    "on_err": "break",
     "actions": {
-        "Tushare_A股清单": {
+        "Action_A": {
             "class": "com.wdbd.fd.collector.actions.demo_actions.DemoAction_A",
-            "desc": "下载股票清单",
+            "desc": "Action实例A",
             "run_windows": [
                 ["1000", "1230"],
                 ["1600", "2000"]
@@ -15,6 +14,14 @@
             "daily_once": true,
             "自定义1": "abc",
             "自定义2": 12345
+        }, 
+        "Action_B": {
+            "class": "com.wdbd.fd.collector.actions.demo_actions.DemoAction_A",
+            "desc": "Action实例B",
+            "run_windows": [
+                ["1000", "1230"]
+            ],
+            "daily_once": false
         }
     }
 }
