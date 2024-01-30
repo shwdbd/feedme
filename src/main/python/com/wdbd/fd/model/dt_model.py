@@ -109,6 +109,12 @@ class ActionGroup:
 # 动作配置对象
 class ActionConfig:
     """动作配置对象"""
+
+    # Group执行状态
+    RUNNING = '1'
+    SUCCESS = '9'
+    FAILED = '4'
+    
     def __init__(self, group: ActionGroup = None) -> None:
         self.group = group
         self.class_url = ""

@@ -1,6 +1,6 @@
 # 代码调用窗口
 from com.wdbd.fd.services.dt.server import DTServer, ServerUtils
-from com.wdbd.fd.model.db.db_services import start_dtserver, shundown_server, get_server_status, log_group
+from com.wdbd.fd.model.db.db_services import start_dtserver, shundown_server, get_server_status, log_group, log_action
 from com.wdbd.fd.services.dt.server import BasicEngine
 from com.wdbd.fd.model.dt_model import ActionGroup, AbstractAction, ActionConfig
 
@@ -29,34 +29,34 @@ def run_test_group():
     print("测试参数准备完毕！")
 
     # 执行
-    engine._start_group_threads(group=group)
+    engine._start_group_threads(group=group, _test_mode=True)
 
 
 if __name__ == "__main__":
 
-    # # 测试启动单个Group
-    # run_test_group()
-    
-    # 记录Group日志
-    group = ActionGroup()
-    group.name = "测试组AB"
-    group.set_interval_minutes("5s")
-    # 加载Action
-    action_A = ActionConfig()
-    action_A.name = "动作A"
-    action_A.class_url = "com.wdbd.fd.services.dt.actions.test_actions.DemoActionA"
-    action_A.set_windows([])
-    action_A.set_once_on_day(True)
-    group.append_action(action_A)
-    action_B = ActionConfig()
-    action_B.name = "动作B"
-    action_B.class_url = "com.wdbd.fd.services.dt.actions.test_actions.DemoActionB"
-    action_B.set_windows([])
-    action_B.set_once_on_day(True)
-    group.append_action(action_B)
-    print("测试参数准备完毕！")
-    # log_group(group=group)
-    log_group(group=group, result=False, msg="xxxyyy")
+    # 测试启动单个Group
+    run_test_group()
+
+    # # 记录Group日志
+    # group = ActionGroup()
+    # group.name = "测试组AB"
+    # group.set_interval_minutes("5s")
+    # # 加载Action
+    # action_A = ActionConfig()
+    # action_A.name = "动作A"
+    # action_A.class_url = "com.wdbd.fd.services.dt.actions.test_actions.DemoActionA"
+    # action_A.set_windows([])
+    # action_A.set_once_on_day(True)
+    # group.append_action(action_A)
+    # action_B = ActionConfig()
+    # action_B.name = "动作B"
+    # action_B.class_url = "com.wdbd.fd.services.dt.actions.test_actions.DemoActionB"
+    # action_B.set_windows([])
+    # action_B.set_once_on_day(True)
+    # group.append_action(action_B)
+    # print("测试参数准备完毕！")
+    # # log_group(group=group)
+    # log_group(group=group, result=False, msg="xxxyyy")
 
     # # 启动服务
     # engine = DTServer.getConfigFileEngine()

@@ -14,9 +14,8 @@ import threading
 from abc import ABC, abstractmethod
 from com.wdbd.fd.common.tl import get_logger, get_config_dir, Result, now
 import importlib
-from com.wdbd.fd.model.db.db_services import start_dtserver, shundown_server, get_server_status
+from com.wdbd.fd.model.db.db_services import start_dtserver, shundown_server, get_server_status, log_group, log_new_action, log_action
 import time
-# from com.wdbd.fd.services.dt.config import Action, ActionGroup
 from com.wdbd.fd.model.dt_model import ActionConfig, ActionGroup, SERVER_STAUTS_CLOSING
 import datetime
 
@@ -81,14 +80,12 @@ class BasicEngine(DTEngine):
         return None
 
     # 执行Group线程
-    def _start_group_threads(self, group):
+    def _start_group_threads(self, group, _test_mode: bool = False):
         """ 执行单个Group进程
 
         Args:
             group (ActionGroup): 动作组
         """
-        # TEST 此处要详细测试
-        
         # EFFECTS:
         # 1. 检查执行时机，比如是否在执行窗口等
         # 2. 登记 group 日志
@@ -98,11 +95,16 @@ class BasicEngine(DTEngine):
         # 6. sleep等待时间
         # END
 
+        test_loop_time = 1  # 测试模式下循环次数
+
         # 日志头
         log = get_logger()
         LOG_G = "【{group_name}】".format(group_name=group.name)
 
-        while True:
+        while (test_loop_time > 0 and True):
+            if _test_mode:
+                test_loop_time = test_loop_time - 1
+        
             # TODO 判断服务器状态，如果是停止中，则退出循环
             server_status = get_server_status()
             if server_status == SERVER_STAUTS_CLOSING:
@@ -115,12 +117,13 @@ class BasicEngine(DTEngine):
             log.info("== {T} == ".format(T=LOG_G) + "-"*20)
             log.info("{T}开始执行".format(T=LOG_G))
             log.info("{T} Actions".format(T=LOG_G))
-            # TODO 登记Group日志
+            # 登记Group日志
+            group_log_id = log_group(group=group)
+            # 记住并返回group的日志id
             log.info("依次执行{0}个Action".format(len(group.actions)))
             for action_idx, action_name in enumerate(group.actions):
                 action = group.actions.get(action_name)
                 LOG_A = "【{g}|{a}】".format(g=group.name, a=action.name)
-                
                 try:
                     # 实例化Action对象
                     module = importlib.import_module(action.get_package())
@@ -133,14 +136,16 @@ class BasicEngine(DTEngine):
                         break
                     else:
                         continue
-
                 # 执行Action
                 try:
                     # TODO 登记Action日志
+                    # TODO 要加入 Action执行的数据日期
+                    action_log_id = log_new_action(action_obj, group_log_id=group_log_id, group_name=group.name)
                     # 检查运行环境
                     res = action_obj.check_environment()
                     if res.result is False:
                         log.error("{T}环境监测结果为失败！原因 = {msg}".format(T=LOG_A, msg=res.msg))
+                        log_action(action_log_id=action_log_id, result=False, msg=res.msg)
                         if group.get_onerr_mode() == ActionGroup.BREAK:
                             continue    # 执行下一个Action
                     else:
@@ -151,26 +156,28 @@ class BasicEngine(DTEngine):
                             # 执行Action动作
                             try:
                                 res = action_obj.handle()
-                                if res:
-                                    pass
+                                if res is not None and res.result:
+                                    log_action(action_log_id=action_log_id, result=True, msg="")
                                 else:
+                                    log_action(action_log_id=action_log_id, result=False, msg=res.msg)
                                     if group.get_onerr_mode() == ActionGroup.BREAK:
                                         log.error("{T} 错误，并终止执行后续步骤".format(T=LOG_A))
                                         break
                             except Exception:
-                                print('Action执行中出现问题')     
+                                print('Action执行中出现问题')
                 except Exception as err:
                     # FIXME 针对无法实例化的问题，需要进行特殊处理
-                    print('Action运行 occurred' , str(err))
-                finally:
-                    # TODO 登记Action日志
-                    pass
+                    # FIXME 针对执行错误，进行日志登记
+                    log_action(action_log_id=action_log_id, result=False, msg=str(err))
+                    print('Action运行 occurred', str(err))
 
             # 线程等待
             log.info("Group {n} 等待{0}分钟".format(group.get_interval_minutes(), n=group.name))
             time.sleep(group.get_interval_minutes() * 60)
             log.info("== {T} == ".format(T=LOG_G) + "-"*20)
-            # TODO 登记Group日志(END)
+
+            # 登记Group日志(END)
+            log_group(group=group, result=True)
 
         print("{T}Group {n}线程结束".format(T=LOG_G, n=group.name))
 

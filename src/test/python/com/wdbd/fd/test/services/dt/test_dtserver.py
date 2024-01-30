@@ -11,27 +11,50 @@
 import unittest
 from com.wdbd.fd.services.dt.server import BasicEngine, ServerUtils
 from com.wdbd.fd.model.dt_model import ActionGroup, ActionConfig
+from com.wdbd.fd.model.db import get_engine, table_objects_pool as DB_POOL
 
 
 class TestActionGroupRunning(unittest.TestCase):
     """ 测试ActionGroup单个线程的执行流程 """
+
+    def setUp(self) -> None:
+        self.engine = get_engine()
+        t_group_log = DB_POOL.get("comm_action_group_log")
+        t_action_log = DB_POOL.get("comm_actions_log")
+        with self.engine.connect() as connection:
+            connection.execute(t_group_log.delete())
+            connection.execute(t_action_log.delete())
+            connection.commit()
+        return super().setUp()
+
+    def tearDown(self) -> None:
+        return super().tearDown()
 
     def test_thead_run(self):
         """ 测试ActionGroup单个线程的执行流程 """
         engine = BasicEngine(groups=[])
         group = ActionGroup()
         group.name = "测试组AB"
-        group.set_interval_minutes("1s")
+        group.set_interval_minutes("5s")
+        # 模拟新线程
+        engine.threads[group.name] = "s"
         # 加载Action
         action_A = ActionConfig()
         action_A.name = "动作A"
-        action_A.class_url = "com.wdbd.fd.services.dt.actions.test_actions.DemoActionA",
+        action_A.class_url = "com.wdbd.fd.services.dt.actions.test_actions.DemoActionA"
         action_A.set_windows([])
         action_A.set_once_on_day(True)
         group.append_action(action_A)
+        action_B = ActionConfig()
+        action_B.name = "动作B"
+        action_B.class_url = "com.wdbd.fd.services.dt.actions.test_actions.DemoActionB"
+        action_B.set_windows([])
+        action_B.set_once_on_day(True)
+        group.append_action(action_B)
+        print("测试参数准备完毕！")
 
         # 执行
-        engine._start_group_threads(group=group)
+        engine._start_group_threads(group=group, _test_mode=True)
 
 
 class TestServerUtils(unittest.TestCase):
