@@ -104,7 +104,6 @@ class BasicEngine(DTEngine):
         while (test_loop_time > 0 and True):
             if _test_mode:
                 test_loop_time = test_loop_time - 1
-        
             # TODO 判断服务器状态，如果是停止中，则退出循环
             server_status = get_server_status()
             if server_status == SERVER_STAUTS_CLOSING:
