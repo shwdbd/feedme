@@ -114,7 +114,7 @@ class ActionConfig:
     RUNNING = '1'
     SUCCESS = '9'
     FAILED = '4'
-    
+
     def __init__(self, group: ActionGroup = None) -> None:
         self.group = group
         self.class_url = ""

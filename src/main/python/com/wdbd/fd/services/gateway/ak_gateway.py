@@ -76,11 +76,11 @@ class AkshareGateWay(AbstarctAkshareGateWay):
             df = callback(*args, **kargs)
             # 登记API日志
             # 入参控制，日期型号，统一成 yyyy-MM-dd
-            self.gw_logger.info("接口={api_name}, 参数[{p}], 结果=SUCCESS".format(api_name=callback.__name__, p=str(kargs)))
+            self.gw_logger.info("接口={api_name}, 参数[{p}], 结果= SUCCESS".format(api_name=callback.__name__, p=str(kargs)))
             # 数据清洗(无)
             return df
         except Exception as err:
-            self.gw_logger.error("接口={api_name}, 参数[{p}], 结果=FAILED".format(api_name=callback.__name__, p=str(kargs)))
+            self.gw_logger.error("接口={api_name}, 参数[{p}], 结果= FAILED".format(api_name=callback.__name__, p=str(kargs)))
             raise DataException(message="Akshare访问异常, {0}".format(str(err)))
 
     def _symbol_2_default(self, symbol: str) -> str:
@@ -137,9 +137,10 @@ if __name__ == "__main__":
     # 调用：
     gw = get_ak_gateway()
     # print(gw)
-    df = gw.call(callback=ak.stock_zh_a_hist, symbol="600016", start_date="20240225", end_date="20240228")
-    # df = gw.call(callback=ak.stock_zh_a_hist_xxx, symbol="600016", start_date="20240225", end_date="20240228")
-    df = gw.call(callback=ak.stock_zh_a_hist, symbol="aaaaaa", start_date="20240225", end_date="20240228")
+    # df = gw.call(callback=ak.stock_zh_a_hist, symbol="600016", start_date="20240225", end_date="20240228")
+    # # df = gw.call(callback=ak.stock_zh_a_hist_xxx, symbol="600016", start_date="20240225", end_date="20240228")
+    # df = gw.call(callback=ak.stock_zh_a_hist, symbol="aaaaaa", start_date="20240225", end_date="20240228")
+    df = gw.call(callback=ak.tool_trade_date_hist_sina)
     print(df)
     
     # # 单独日志

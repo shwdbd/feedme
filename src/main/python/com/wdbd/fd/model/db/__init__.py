@@ -10,7 +10,9 @@ tables = [
     "comm_action_group",
     "comm_actions",
     "comm_action_group_log",
-    "comm_actions_log"
+    "comm_actions_log",
+    "ods_akshare_stock_sse_summary",
+    "ods_akshare_tool_trade_date_hist_sina"
 ]
 
 # 表对象池
