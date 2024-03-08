@@ -136,17 +136,26 @@ class Ak_Stock_Cal(AbstractAction):
         """
         return Result()
 
-    def _get_year_to_down(self):
+    def _get_year_to_down(self, db_session):
         # 判断到底更新哪一年的数据
+        # 如果这年有数据，且大于200，则不用更新
         year_to_down = None   # 拟下载的数据年份
         today = tl.today()
         year = today[:4]
         month = today[4:6]
 
+        t_cal = DB_POOL.get("ods_akshare_tool_trade_date_hist_sina")
+
         if int(month) in [11, 12]:
-            year_to_down = str(int(year) + 1)   # 下一年
+            count = db_session.query(t_cal).filter(t_cal.c.trade_date >= (str(int(year) + 1)+"0101")).filter(t_cal.c.trade_date <= (str(int(year) + 1)+"1231")).count()
+            # print(count)
+            if count < 200:
+                year_to_down = str(int(year) + 1)   # 下一年 
         else:
-            year_to_down = year     # 今年
+            count = db_session.query(t_cal).filter(t_cal.c.trade_date >= (year+"0101")).filter(t_cal.c.trade_date <= (year+"1231")).count()
+            # print(count)
+            if count < 200:
+                year_to_down = year     # 今年
         # print("year_to_down = " + year_to_down)
         return year_to_down
 
@@ -159,8 +168,8 @@ class Ak_Stock_Cal(AbstractAction):
         # TEST 待测试
         # 用于单独运行时候
         if self.log is None:
-            # self.log = tl.get_action_logger(action_name=self.name)
-            self.log = tl.get_logger()
+            self.log = tl.get_action_logger(action_name=self.name)
+            # self.log = tl.get_logger()
 
         self.log.info("下载 股票交易日历")
         try:
@@ -168,11 +177,17 @@ class Ak_Stock_Cal(AbstractAction):
             Session = sessionmaker(bind=engine)
             session = Session()
 
-            year_to_down = self._get_year_to_down()
-            self.log.info("更新数据年份：" + year_to_down)
+            if self.DOWNLOAD_ALL is False:
+                year_to_down = self._get_year_to_down(session)     # 判断是否要更新数据
+                self.log.info("更新数据年份：" + str(year_to_down))
 
             # 取得全量数据
             df = self.gw.call(callback=ak.tool_trade_date_hist_sina)
+            # 数据清洗
+            df = df.astype({'trade_date': str})
+            df["trade_date"] = df["trade_date"].apply(tl.d2dbstr)
+            # print(df)
+
             if df.empty:    # 如果返回为空
                 return Result(result=False, msg="数据返回为空！")
             # 过滤符合条件的df数据
@@ -184,12 +199,12 @@ class Ak_Stock_Cal(AbstractAction):
             elif year_to_down is not None:
                 # 过滤后只剩余特定年饭的数据
                 self.log.debug("只更新{0}年数据".format(year_to_down))
-                start_dt = "{0}-01-01".format(year_to_down)
-                end_dt = "{0}-12-31".format(year_to_down)
+                start_dt = "{0}0101".format(year_to_down)
+                end_dt = "{0}1231".format(year_to_down)
                 t_cal = DB_POOL.get("ods_akshare_tool_trade_date_hist_sina")
                 session.query(t_cal).filter(t_cal.c.trade_date >= start_dt).filter(t_cal.c.trade_date <= end_dt).delete()
                 session.commit()
-                df = df.astype({'trade_date': str})
+                # df = df.astype({'trade_date': str})
                 df = df[(df['trade_date'] >= start_dt) & (df['trade_date'] <= end_dt)]
             else:
                 # 不更新本地数据
@@ -198,7 +213,9 @@ class Ak_Stock_Cal(AbstractAction):
             # 写入数据库
             if df is not None:
                 df.to_sql(name='ods_akshare_tool_trade_date_hist_sina', con=engine, if_exists='append', index=False)
-            self.log.info("下载交易日历{0}条数据数据".format(df.shape[0]))
+                self.log.info("下载交易日历{0}条数据数据".format(df.shape[0]))
+            else:
+                self.log.info("不更新交易日历数据")
 
             return Result()
         except DataException as dwe:

@@ -79,20 +79,21 @@ def get_action_logger(action_name: str) -> logging.Logger:
     Returns:
         logging.Logger: _description_
     """
-    if ENVIRONMENT == 'test':
-        config_file_path = r"src\\test\\config\\action_log.conf"
-    else:
-        config_file_path = r"src\\main\\config\\action_log.conf"
+    return get_logger()
+    # if ENVIRONMENT == 'test':
+    #     config_file_path = r"src\\test\\config\\action_log.conf"
+    # else:
+    #     config_file_path = r"src\\main\\config\\action_log.conf"
 
-    formatter = logging.Formatter('[%(asctime)s][%(levelname)-5s] 【{0}】 %(message)s '.format(action_name), datefmt="%Y-%m-%d %H:%M:%S")
+    # formatter = logging.Formatter('[%(asctime)s][%(levelname)-5s] 【{0}】 %(message)s '.format(action_name), datefmt="%Y-%m-%d %H:%M:%S")
 
-    logging.config.fileConfig(config_file_path)
-    # logger_action = logging.getLogger('root')   # 取得根Logger
-    logger_action = logging.getLogger('fd_action')
-    for handler in logger_action.handlers:
-        print(handler)
-        handler.setFormatter(formatter)
-    return logging.getLogger('fd_action')
+    # logging.config.fileConfig(config_file_path)
+    # # logger_action = logging.getLogger('root')   # 取得根Logger
+    # logger_action = logging.getLogger('fd_action')
+    # for handler in logger_action.handlers:
+    #     print(handler)
+    #     handler.setFormatter(formatter)
+    # return logging.getLogger('fd_action')
 
 
 # 返回特定Group用日志记录器
