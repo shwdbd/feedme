@@ -24,7 +24,7 @@ def get_ak_gateway(mode: str = None):
 
 
 class AbstarctAkshareGateWay(ABC):
-    
+
     @abstractmethod
     def symbol_2_tscode(self, symbol) -> str:
         pass
@@ -110,6 +110,10 @@ class AkshareGateWay(AbstarctAkshareGateWay):
             return symbol
 
         return "{s}.{exchange}".format(s=symbol[2:], exchange=symbol[:2].upper())
+
+    def symbol_exchange_2_tscode(self, symbol, exchange) -> str:
+        """ 600016 变为 600016.SH """
+        return "{s}.{exchange}".format(s=symbol, exchange=exchange)
 
     # 加载专用日志管理器
     def _init_log_gw(self):

@@ -16,12 +16,14 @@ from com.wdbd.fd.model.db import get_engine, table_objects_pool as DB_POOL
 from sqlalchemy.orm import sessionmaker
 import com.wdbd.fd.common.tl as tl
 from sqlalchemy.exc import SQLAlchemyError as SQLAlchemyError
+import numpy as np
 
 
 # 市场总貌|上海证券交易所
 class Ak_SSE_Summary(AbstractAction):
     """
     市场总貌|上海证券交易所
+    
 
     DOC: https://lxhcvhnie6k.feishu.cn/docx/DrErdGaWBodRRIxFMVYcTB0rnBf#M6zmdZRMJotFngx9DTOcPCnrnhf
     """
@@ -238,6 +240,218 @@ class Ak_Stock_Cal(AbstractAction):
         return Result()
 
 
+# 股票清单
+class Ak_Stock_List(AbstractAction):
+    """
+    股票清单
+
+    DOC: https://lxhcvhnie6k.feishu.cn/docx/DrErdGaWBodRRIxFMVYcTB0rnBf#MLO3d1sYCoOzpMxpyXYcLFuJnKd
+    """
+
+    def __init__(self) -> None:
+        self.name = "股票清单"
+        self.gw = get_ak_gateway()  # 数据网关
+        self.DOWNLOAD_ALL = True    # 全量参数
+        super().__init__()
+
+    def check_environment(self) -> bool:
+        """检查环境，检查当前是否可以进行数据下载
+
+        通常子类中会检查需要下载的数据是否已准备好
+        Returns:
+            bool: 检查结果
+        """
+        return Result()
+
+    def handle(self) -> bool:
+        """数据处理函数，子类必须实现
+
+        Returns:
+            bool: 执行结果
+        """
+        # TEST 待测试
+        # 用于单独运行时候
+        if self.log is None:
+            self.log = tl.get_action_logger(action_name=self.name)
+            # self.log = tl.get_logger()
+
+        self.log.info("下载 股票交易日历")
+        try:
+            engine = get_engine()
+            Session = sessionmaker(bind=engine)
+            session = Session()
+
+            # 刷新sh
+            self.update_sh(engine)
+            # 刷新sz
+            self.update_sz(engine)
+            # 刷新bj
+            self._update_bj(engine)
+
+            # TODO 更新汇总清单
+
+            return Result()
+        except DataException as dwe:
+            msg = "Akshare获取数据异常，" + str(dwe)
+            self.log.error(msg)
+            return tl.Result(result=False, msg=msg)
+        except SQLAlchemyError as sqle:
+            msg = "SQL异常" + str(sqle)
+            self.log.error(msg)
+            return tl.Result(result=False, msg=msg)
+        finally:
+            session.close()
+
+    # 刷新北京交易所数据
+    def _update_bj(self, engine):
+        Session = sessionmaker(engine)
+        session = Session()
+
+        t_sh = DB_POOL.get("ods_akshare_stock_info_bj_name_code")
+        # 清空数据库
+        session.query(t_sh).delete()
+        session.commit()
+
+        # 取得数据
+        df = self.gw.call(callback=ak.stock_info_bj_name_code)
+        # 数据清洗
+        df = df.astype({'证券代码': str, "上市日期": str, "报告日期": str})
+        column_names = {'证券代码': 'symbol',
+                        '证券简称': 'stock_name',
+                        '总股本': 'zgb',
+                        '流通股本': 'ltgb',
+                        '上市日期': 'ipo_date',
+                        '所属行业': 'sshy',
+                        '地区': 'dq',
+                        '报告日期': 'bgrq',
+                        }
+        df["上市日期"] = df["上市日期"].apply(tl.d2dbstr)
+        df["报告日期"] = df["报告日期"].apply(tl.d2dbstr)
+        df["证券代码"] = df["证券代码"].apply(self.gw.symbol_exchange_2_tscode, exchange="BJ")
+        df = df.rename(columns=column_names)
+        try:
+            df["zgb"] = df["zgb"].str.replace(",", "")
+            df["tlgb"] = df["tlgb"].str.replace(",", "")
+        except Exception:
+            pass
+        # print(df)
+
+        if df is not None:
+            df.to_sql(name='ods_akshare_stock_info_bj_name_code', con=engine, if_exists='append', index=False)
+            self.log.info("下载北交所股票{0}条数据数据".format(df.shape[0]))
+        session.close()
+
+    # 刷新上交所数据
+    def update_sh(self, engine):
+        Session = sessionmaker(engine)
+        session = Session()
+
+        t_sh = DB_POOL.get("ods_akshare_stock_info_sh_name_code")
+        # 清空数据库
+        session.query(t_sh).delete()
+        session.commit()
+
+        # 轮询下载几个板块
+        board_list = ["主板A股", "主板B股", "科创板"]
+        for board in board_list:
+            # 取得数据
+            df = self.gw.call(callback=ak.stock_info_sh_name_code, symbol=board)
+            # 数据清洗
+            df["board"] = board
+            df = df.astype({'证券代码': str, "上市日期": str})
+            column_names = {'证券代码': 'symbol',
+                            '证券简称': 'stock_name',
+                            '公司全称': 'total_name',
+                            '上市日期': 'ipo_date',
+                            }
+            df["上市日期"] = df["上市日期"].apply(tl.d2dbstr)
+            df["证券代码"] = df["证券代码"].apply(self.gw.symbol_exchange_2_tscode, exchange="SH")
+            df = df.rename(columns=column_names)
+            # print(df)
+
+            if df is not None:
+                df.to_sql(name='ods_akshare_stock_info_sh_name_code', con=engine, if_exists='append', index=False)
+                self.log.info("下载上交所股票{0}条数据数据 {1}".format(df.shape[0], board))
+        session.close()
+
+    # 刷新深圳交所数据
+    def update_sz(self, engine):
+        Session = sessionmaker(engine)
+        session = Session()
+
+        t_sz = DB_POOL.get("ods_akshare_stock_info_sz_name_code")
+        # 清空数据库
+        session.query(t_sz).delete()
+        session.commit()
+
+        # 轮询下载几个板块
+        # stock_type_list = ["A股列表", "B股列表", "CDR列表", "AB股列表"]
+        stock_type_list = ["A股列表", "B股列表", "AB股列表"]
+        for stock_type in stock_type_list:
+            # 取得数据
+            df = self.gw.call(callback=ak.stock_info_sz_name_code, symbol=stock_type)
+            # print(df)
+            # 数据清洗
+            df["stock_type"] = stock_type.replace("列表", "")
+            # 根据不同种类，进行分别处理
+            if stock_type in ["A股列表"]:
+                df = df.astype({'A股代码': str, "A股上市日期": str})
+                column_names = {'A股代码': 'symbol',
+                                'A股简称': 'stock_name',
+                                'A股上市日期': 'ipo_date',
+                                'A股总股本': 'zgb',
+                                'A股流通股本': 'tlgb',
+                                '所属行业': 'sshy',
+                                '板块': 'board',
+                                }
+                df = df.rename(columns=column_names)
+            elif stock_type in ["AB股列表"]:
+                df = df[['板块', "A股代码", "A股简称", 'A股上市日期', '所属行业', 'stock_type']]
+                df["zgb"] = "0"
+                df["tlgb"] = "0"
+                df = df.astype({'A股代码': str, "A股上市日期": str})
+                column_names = {'A股代码': 'symbol',
+                                'A股简称': 'stock_name',
+                                'A股上市日期': 'ipo_date',
+                                '所属行业': 'sshy',
+                                '板块': 'board',
+                                }
+                df = df.rename(columns=column_names)
+            elif stock_type in ["B股列表"]:
+                df = df.astype({'B股代码': str, "B股上市日期": str})
+                column_names = {'B股代码': 'symbol',
+                                'B股简称': 'stock_name',
+                                'B股上市日期': 'ipo_date',
+                                'B股总股本': 'zgb',
+                                'B股流通股本': 'tlgb',
+                                '所属行业': 'sshy',
+                                '板块': 'board',
+                                }
+                df = df.rename(columns=column_names)
+            # print(df.head())
+            df["ipo_date"] = df["ipo_date"].apply(tl.d2dbstr)
+            df["symbol"] = df["symbol"].apply(self.gw.symbol_exchange_2_tscode, exchange="SZ")
+            try:
+                df["zgb"] = df["zgb"].str.replace(",", "")
+                df["tlgb"] = df["tlgb"].str.replace(",", "")
+            except Exception:
+                pass
+            # print(df)
+
+            if df is not None:
+                df.to_sql(name='ods_akshare_stock_info_sz_name_code', con=engine, if_exists='append', index=False)
+                self.log.info("下载 深圳 交易所股票{0}条数据数据 <{1}>".format(df.shape[0], stock_type))
+        session.close()
+
+    def rollback(self) -> bool:
+        """错误发生时，回滚动作函数
+
+        Returns:
+            bool: 回滚操作执行结果
+        """
+        return Result()
+
+
 if __name__ == "__main__":
     # # ENVIRONMENT = ""
     # # 
@@ -247,7 +461,20 @@ if __name__ == "__main__":
 
     # # tl.get_action_logger("ABC").info("Action日志")
 
-    # 下载股票交易日历
-    action = Ak_Stock_Cal()
+    # # 下载股票交易日历
+    # action = Ak_Stock_Cal()
+    # res = action.handle()
+    # print(res.result)
+
+    # 股票清单
+    action = Ak_Stock_List()
     res = action.handle()
     print(res.result)
+
+    # stock_type_list = ["A股列表", "B股列表", "CDR列表", "AB股列表"]
+    # gw = get_ak_gateway()
+    # df = gw.call(callback=ak.stock_info_bj_name_code)
+    # print(df.head())
+    # # for type in stock_type_list:
+    # #     df = gw.call(callback=ak.stock_info_sz_name_code, symbol=type)
+    # #     print(df.head(3))

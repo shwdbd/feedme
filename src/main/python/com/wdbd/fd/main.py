@@ -1,10 +1,11 @@
 # 代码调用窗口
 from com.wdbd.fd.services.dt.server import DTServer, ServerUtils
 from com.wdbd.fd.model.db.db_services import start_dtserver, shundown_server, get_server_status, log_group, log_action
-from com.wdbd.fd.services.dt.server import BasicEngine
+from com.wdbd.fd.services.dt.server import BasicEngine, DTServer
 from com.wdbd.fd.model.dt_model import ActionGroup, AbstractAction, ActionConfig
 
 
+# 测试单个线程
 def run_test_group():
     # 测试单个线程
     engine = BasicEngine(groups=[])
@@ -32,10 +33,19 @@ def run_test_group():
     engine._start_group_threads(group=group, _test_mode=True)
 
 
+# 运行服务器
+def run_server():
+    engine = DTServer.getConfigFileEngine(file_name="src/main/config\\action_groups\\akshare_daily.json")
+    print(engine)
+    engine.start()
+
+
 if __name__ == "__main__":
 
-    # 测试启动单个Group
-    run_test_group()
+    run_server()
+
+    # # 测试启动单个Group
+    # run_test_group()
 
     # # 记录Group日志
     # group = ActionGroup()

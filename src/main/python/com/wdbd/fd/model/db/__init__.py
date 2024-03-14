@@ -12,7 +12,11 @@ tables = [
     "comm_action_group_log",
     "comm_actions_log",
     "ods_akshare_stock_sse_summary",
-    "ods_akshare_tool_trade_date_hist_sina"
+    "ods_akshare_tool_trade_date_hist_sina",
+    "ods_akshare_stock_list",
+    "ods_akshare_stock_info_sh_name_code",
+    "ods_akshare_stock_info_sz_name_code",
+    "ods_akshare_stock_info_bj_name_code",
 ]
 
 # 表对象池
@@ -41,6 +45,7 @@ def _init_tables(engine, output_level: int = 0):
         metadata_obj.reflect(bind=engine)    # 获得元数据
         table_count = 0
         for t_name in tables:
+            # print(t_name)
             if metadata_obj.tables.get(t_name) is not None:
                 # table_objects_pool[t_name] = metadata_obj.tables[t_name]
                 table_objects_pool[t_name] = Table(

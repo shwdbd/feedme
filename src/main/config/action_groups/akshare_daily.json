@@ -1,0 +1,34 @@
+{
+    "每日日终组": { 
+        "name": "Akshare每日日终组",
+        "desc": "Akshare数据源, 每日收盘后下载数据",
+        "rules": {
+            "run_windows": [["1530", "1550"], ["1600", "2000"]], 
+            "on_error": "continue", 
+            "interval_time": "30m"
+        },
+        "actions": {
+            "上证所概要": {
+                "desc": "市场总貌|上海证券交易所",
+                "class": "com.wdbd.fd.services.dt.actions.akshare_action.Ak_SSE_Summary",
+                "rules": {
+                    "run_windows": [
+                        ["1600", "2000"]
+                        ],
+                    "daily_once": true
+                }
+            },
+            "股票交易日历": {
+                "desc": "股票交易日历",
+                "class": "com.wdbd.fd.services.dt.actions.akshare_action.Ak_Stock_Cal",
+                "rules": {
+                    "run_windows": [
+                        ["0900", "2000"]
+                        ],
+                    "daily_once": true
+                }
+            }
+        }
+    }
+}
+

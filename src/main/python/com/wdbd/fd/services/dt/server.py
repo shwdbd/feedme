@@ -248,6 +248,8 @@ class ServerUtils:
             get_logger().info("默认配置文件: " + DEFAULT_CONFIG_DIR)
             file_path = DEFAULT_CONFIG_DIR
             # src\main\config\DEFAULT_ACTION_GROUP.json
+        else:
+            get_logger().info("Server 配置文件: " + file_path)
 
         # 文件不存在，直接返回None
         if os.path.exists(file_path) is False:
@@ -288,12 +290,12 @@ class ServerUtils:
         if _test_time is None:
             TIME_VIEW_FORMAT = "%H%M"
             t = datetime.datetime.now().strftime(TIME_VIEW_FORMAT)
-            t = now()
         else:
             t = _test_time
+        # print(t)
         for win_item in windows:
             # ["0900", "103000"]
-            print(win_item)
+            # print(win_item)
             if t > win_item[0] and t < win_item[1]:
                 return True
         return False
