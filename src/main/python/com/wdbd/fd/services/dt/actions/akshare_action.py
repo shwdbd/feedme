@@ -8,7 +8,7 @@
 @Contact :   shwangjj@163.com
 @Desc    :   Akshare 数据源处理
 '''
-from com.wdbd.fd.model.dt_model import AbstractAction
+from com.wdbd.fd.model.dt_model import AbstractAction, ActionConfig
 from com.wdbd.fd.common.tl import Result
 from com.wdbd.fd.services.gateway.ak_gateway import get_ak_gateway, DataException
 import akshare as ak
@@ -452,7 +452,165 @@ class Ak_Stock_List(AbstractAction):
         return Result()
 
 
+# 股票历史数据(东财)
+class AkStockHistoryData(AbstractAction):
+    """
+    股票历史数据(东财)
+
+    DOC: https://lxhcvhnie6k.feishu.cn/docx/DrErdGaWBodRRIxFMVYcTB0rnBf#YBG6dncEmotMaLxbyJycHAQanCb
+
+    实现需求：
+    1. 存放包括 各交易所、各周期、各复权模式的数据
+    2. 日期格式:yyyyMMdd, 股票代码:600016
+    3. 股票清单从: ods_akshare_stock_list 表获取
+    4. 采用覆盖式更新数据
+
+    p中的参数：
+    - DOWNLOAD_ALL: bool [defualt: false]   是否全量下载
+    - trade_date: str [default: None]       指定日期下载
+    - start_date: str [default: None]       指定日期段下载,开始日期
+    - end_date: str [default: None]         指定日期段下载,结束日期
+    - symbol_list: list of str [dfault: None]   指定股票代码列表
+    """
+
+    def __init__(self) -> None:
+        self.name = "交易日历"
+        self.gw = get_ak_gateway()  # 数据网关
+        # 初始化Action日志
+        self.__init_log()
+        
+        super().__init__()
+
+    def __init_log():
+        # 初始化Action日志
+        pass
+        
+
+    def check_environment(self) -> bool:
+        return Result()
+
+    # 获取全部股票代码
+    def _query_symol(self):
+        """
+        从 ods_akshare_stock_list 表查询返回全部股票清单，格式 600016
+        
+        如果参数中有, 则返回symbol_list参数
+        """
+        # TODO 待实现
+        if self.p.get("symbol_list", None) is not None:
+            return self.p.get("symbol_list")
+        else:
+            # 从数据库表中查询
+            try:
+                engine = get_engine()
+                Session = sessionmaker(bind=engine)
+                session = Session()
+
+                t_stock = DB_POOL.get("ods_akshare_stock_list")
+                records = session.query(t_stock).all()
+                print(records)
+
+                return []
+            except DataException as dwe:
+                msg = "Akshare获取数据异常，" + str(dwe)
+                self.log.error(msg)
+                return tl.Result(result=False, msg=msg)
+            except SQLAlchemyError as sqle:
+                msg = "SQL异常" + str(sqle)
+                self.log.error(msg)
+                return tl.Result(result=False, msg=msg)
+            finally:
+                session.close()
+        
+
+    def handle(self) -> bool:
+        """数据处理函数，子类必须实现
+
+        Returns:
+            bool: 执行结果
+        """
+        if self.log is None:
+            self.log = tl.get_action_logger(action_name=self.name)
+            # self.log = tl.get_logger()
+
+        # 参数
+        adjust_list = ['none', 'qfq', 'hfq']    # 复权模式
+        period_list = ['daily', 'weekly', 'monthly']    # 数据周期
+
+        self.log.info("下载股票存量数据 [数据源：东财]")
+        p_DOWNLOAD_ALL = self.p.get("DOWNLOAD_ALL", False)
+        p_trade_date = self.p.get("trade_date", None)
+        p_start_date = self.p.get("start_date", None)
+        p_end_date = self.p.get("end_date", None)
+        self.log.debug("DOWNLOAD_ALL= {0}".format(p_DOWNLOAD_ALL))
+        self.log.debug("trade_date= {0}".format(p_trade_date))
+        self.log.debug("start_date= {0}".format(p_start_date))
+        self.log.debug("end_date= {0}".format(p_end_date))
+
+        try:
+            engine = get_engine()
+            Session = sessionmaker(bind=engine)
+            session = Session()
+
+            symbol_list = self._query_symol()   # TODO 获取全部股票代码
+            for symbol in symbol_list:
+                # 按需要处理的日期数据，分为三种模式进行处理
+                # TODO 按需删除处理
+                self._remove_data(symbol=symbol, trade_date=p_trade_date, start_date=p_start_date, end_date=self.p["end_date"])
+
+                for period in period_list:
+                    for adjust in adjust_list:
+                        if p_DOWNLOAD_ALL:
+                            # 全量下载
+                            df = ak.stock_zh_a_hist(symbol=symbol, period=period, adjust=adjust)
+                            self.log.debug("下载 {symbol} 全日期 数据 [复权={adjust}, 周期={period}]".format(symbol=symbol, period=period, adjust=adjust))
+                        elif self.p["start_date"] and self.p["end_date"]:
+                            # 规定起止日期的情况:
+                            df = ak.stock_zh_a_hist(symbol=symbol, period=period, start_date=p_start_date, end_date=p_end_date, adjust=adjust)
+                            self.log.debug("下载 {symbol} 数据 [复权={adjust}, 周期={period}, 日期: {start_date} ~ {end_date}]".format(symbol=symbol, period=period, adjust=adjust, start_date=p_start_date, end_date=p_end_date))
+                        else:
+                            # 特定日期下载
+                            df = ak.stock_zh_a_hist(symbol=symbol, period=period, start_date=p_trade_date, end_date=p_trade_date, adjust=adjust)
+                            self.log.debug("下载 {symbol} 数据 [复权={adjust}, 周期={period}, 日期: {trade_date}]".format(symbol=symbol, period=period, adjust=adjust, trade_date=p_trade_date))
+                        # TODO 数据清理
+                        df = self._data_clean(df)
+                        # TODO 写入数据库
+                        self._save_to_db(df)
+                self.log.debug("股票{symbol} 完成 ... ".format(symbol=symbol))
+
+            self.log.info("股票历史数据全部下载完成")
+
+            return Result()
+        except DataException as dwe:
+            msg = "Akshare获取数据异常，" + str(dwe)
+            self.log.error(msg)
+            return tl.Result(result=False, msg=msg)
+        except SQLAlchemyError as sqle:
+            msg = "SQL异常" + str(sqle)
+            self.log.error(msg)
+            return tl.Result(result=False, msg=msg)
+        finally:
+            session.close()
+
+    def rollback(self) -> bool:
+        """错误发生时，回滚动作函数
+
+        Returns:
+            bool: 回滚操作执行结果
+        """
+        return Result()
+
+
 if __name__ == "__main__":
+    # 股票存量下载
+    cfg = ActionConfig()
+    cfg.p["DOWNLOAD_ALL"] = True
+    action = AkStockHistoryData()
+    action.set_action_parameters(cfg)
+    action.handle()
+
+
+# if __name__ == "__main__":
     # # ENVIRONMENT = ""
     # # 
     # action = Ak_SSE_Summary()
@@ -466,10 +624,10 @@ if __name__ == "__main__":
     # res = action.handle()
     # print(res.result)
 
-    # 股票清单
-    action = Ak_Stock_List()
-    res = action.handle()
-    print(res.result)
+    # # 股票清单
+    # action = Ak_Stock_List()
+    # res = action.handle()
+    # print(res.result)
 
     # stock_type_list = ["A股列表", "B股列表", "CDR列表", "AB股列表"]
     # gw = get_ak_gateway()

@@ -30,7 +30,8 @@ def tool_trade_date_hist_sina():
     # 8310  2024-12-27
     # 8311  2024-12-30
     # 8312  2024-12-31
-    
+    return
+
 
 def stock_zh_a_spot_em():
     """ 单次返回所有沪深京 A 股上市公司的实时行情数据 """
@@ -48,8 +49,8 @@ def stock_zh_a_spot_em():
 # 5570  871642  通易航天
 # 5571  301526  C国际复
 # 5572  300949  奥雅股份
-
 # [5573 rows x 2 columns]
+    return
 
 
 def stock_zh_a_hist():
@@ -60,6 +61,7 @@ def stock_zh_a_hist():
     print(stock_zh_a_hist_df)
 
 
+# 历史行情数据-新浪
 def stock_zh_a_daily():
     """ 历史行情数据-新浪 """
     # stock_zh_a_daily_qfq_df = ak.stock_zh_a_daily(symbol="sh600016", start_date="20230101", end_date="20231027", adjust="qfq")
@@ -78,6 +80,8 @@ def stock_zh_a_daily():
 # 194  2023-10-25  3.61  3.66  3.59   3.66  64747201.0  234989232.0       3.546212e+10  0.001826
 # 195  2023-10-26  3.64  3.70  3.63   3.69  58483570.0  215009804.0       3.546212e+10  0.001649
 # 196  2023-10-27  3.69  3.70  3.66   3.66  42027107.0  154515471.0       3.546212e+10  0.001185
+    return
+
 
 
 def stock_zh_a_hist_tx():
@@ -85,6 +89,7 @@ def stock_zh_a_hist_tx():
     print(stock_zh_a_hist_tx_df)
 
 
+# 实时行情数据-新浪
 def stock_zh_a_spot():
     """ 实时行情数据-新浪 """
     # stock_zh_a_spot_df = ak.stock_zh_a_spot()
@@ -103,11 +108,33 @@ def stock_zh_a_spot():
 # 5330  sz301559  中集环科  18.68   0.26   1.412  18.66  18.67  18.42  18.40  18.68  18.33    824756.0   15259396.0  10:18:45
 # 5331  sz301568   思泰克  44.40   0.50   1.139  44.38  44.41  43.90  44.94  45.20  43.34   2784683.0  122858124.0  10:18:45
 # 5332  sz301578   N辰奕  79.79  30.85  63.036  79.79  79.98  48.94  80.00  85.00  76.51   5692236.0  452292843.0  10:18:45
+    return
 
 
 # def stock_zh_a_hist():
 #     pass
 
 
+# 历史行情数据-东财
+def stock_zh_a_hist():
+    # DOC： https://akshare.akfamily.xyz/data/stock/stock.html#id22
+
+    symbol = "300226"
+    period = "monthly"
+    # df = ak.stock_zh_a_hist(symbol=symbol, period=period, start_date='20240320', end_date='20240326', adjust="")
+    # print(df.head(1))
+    # df = ak.stock_zh_a_hist(symbol=symbol, period=period, start_date='20240320', end_date='20240326', adjust="qfq")
+    # print(df.head(1))
+    # print(df.info())
+
+    # 如果不提供日期，则返回全部
+    df = ak.stock_zh_a_hist(symbol=symbol, period=period, adjust="")
+    print(df.head(1))
+    print(df.shape)
+
+    pass
+
+
 if __name__ == "__main__":
-    stock_zh_a_hist_tx()
+    # stock_zh_a_hist_tx()
+    stock_zh_a_hist()

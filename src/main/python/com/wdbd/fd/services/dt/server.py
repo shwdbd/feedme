@@ -143,6 +143,7 @@ class BasicEngine(DTEngine):
                     # 检查运行环境
                     res = action_obj.check_environment()
                     if res.result is False:
+                        # 运行环境检查失败情况
                         log.error("{T}环境监测结果为失败！原因 = {msg}".format(T=LOG_A, msg=res.msg))
                         log_action(action_log_id=action_log_id, result=False, msg=res.msg)
                         if group.get_onerr_mode() == ActionGroup.BREAK:
