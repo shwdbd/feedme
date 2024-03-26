@@ -11,12 +11,17 @@
 from abc import ABC, abstractmethod
 import importlib
 from com.wdbd.fd.common.tl import get_action_logger, Result
+from loguru import logger
+import sys
 
 SERVER_STAUTS_SHUNDOWN = "SHUNDOWN"     # 已关闭
 
 SERVER_STAUTS_OPEN = "OPEN"             # 运行中
 
 SERVER_STAUTS_CLOSING = "CLOSING"       # 关闭中
+
+# Action专用Logger是否被设置
+HAS_ACTION_LOGGER = None
 
 
 # 动作组配置对象
@@ -179,8 +184,22 @@ class AbstractAction(ABC):
         }
         self.p = self.parameters
         self.name = None        # Action名
-        # 专用的Action日志器
-        self.log = None
+        # 设置专用的Action日志器
+        self.init_action_logger(self.name)
+        self.log = logger.bind(action_name=self.name)   # 参数绑定
+        # self.log = None
+
+    def init_action_logger(self, name):
+        """ 初始化Action日志 """
+        global HAS_ACTION_LOGGER
+        if HAS_ACTION_LOGGER is None:
+            # print("init logger")
+            logger.remove()
+            # 初始化日志配置
+            logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} 【{extra[action_name]}】 - {message}", filter=lambda x: "action_name" in x["extra"])
+            # 日志文件名不能使用bind的变量，
+            logger.add("log\\Action_日志.log", rotation="8:00", format="{time:YYYY-MM-DD HH:mm:ss} 【{extra[action_name]}】 - {message}", filter=lambda x: "action_name" in x["extra"])
+            HAS_ACTION_LOGGER = "YES"
 
     def set_action_parameters(self, action_cfg: ActionConfig) -> None:
         # 赋值Action配置参数传入
@@ -188,6 +207,8 @@ class AbstractAction(ABC):
         self.log = get_action_logger(action_name=self.name)
         self.parameters = action_cfg.parameters
         self.p = self.parameters
+        # 再绑定一次logger
+        self.log = logger.bind(action_name=self.name)   # 参数绑定
 
     @abstractmethod
     def check_environment(self) -> Result:

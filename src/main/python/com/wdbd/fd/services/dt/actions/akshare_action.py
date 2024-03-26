@@ -16,22 +16,23 @@ from com.wdbd.fd.model.db import get_engine, table_objects_pool as DB_POOL
 from sqlalchemy.orm import sessionmaker
 import com.wdbd.fd.common.tl as tl
 from sqlalchemy.exc import SQLAlchemyError as SQLAlchemyError
-import numpy as np
+from loguru import logger
 
 
 # 市场总貌|上海证券交易所
 class Ak_SSE_Summary(AbstractAction):
     """
     市场总貌|上海证券交易所
-    
 
     DOC: https://lxhcvhnie6k.feishu.cn/docx/DrErdGaWBodRRIxFMVYcTB0rnBf#M6zmdZRMJotFngx9DTOcPCnrnhf
     """
 
-    def __init__(self) -> None:
-        self.name = "市场总貌、上海证券交易所"
-        self.gw = get_ak_gateway()  # 数据网关
+    def __init__(self, name: str = None) -> None:
         super().__init__()
+        self.gw = get_ak_gateway()  # 数据网关
+        if name:
+            self.name = "市场总貌、上海证券交易所"
+            self.log = logger.bind(action_name=self.name)   # 参数绑定
 
     def check_environment(self) -> bool:
         """检查环境，检查当前是否可以进行数据下载
@@ -48,10 +49,9 @@ class Ak_SSE_Summary(AbstractAction):
         Returns:
             bool: 执行结果
         """
-        # TEST 待测试
-        # 用于单独运行时候
-        if self.log is None:
-            self.log = tl.get_action_logger(action_name=self.name)
+        # # 用于单独运行时候
+        # if self.log is None:
+        #     self.log = tl.get_action_logger(action_name=self.name)
 
         self.log.info("下载 市场总貌|上海证券交易所")
         try:
