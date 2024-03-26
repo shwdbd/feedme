@@ -11,6 +11,7 @@
 import unittest
 from com.wdbd.fd.services.dt.actions.akshare_action import Ak_SSE_Summary
 from com.wdbd.fd.model.dt_model import ActionConfig
+from com.wdbd.fd.common.tl import Result
 
 
 class Test_Ak_SSE_Summary(unittest.TestCase):
@@ -24,4 +25,8 @@ class Test_Ak_SSE_Summary(unittest.TestCase):
         action = Ak_SSE_Summary()
         action.set_action_parameters(config)
         res = action.handle()
-        self.assertIsNotNone(res)
+        self.assertEqual(Result(), res)
+        
+        # TODO 检查下载后的情况
+        # TODO db_utils 工具函数：count
+        # db_utils.clear_table

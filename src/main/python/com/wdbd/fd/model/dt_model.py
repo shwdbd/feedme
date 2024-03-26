@@ -196,9 +196,9 @@ class AbstractAction(ABC):
             # print("init logger")
             logger.remove()
             # 初始化日志配置
-            logger.add(sys.stderr, format="{time:YYYY-MM-DD HH:mm:ss} 【{extra[action_name]}】 - {message}", filter=lambda x: "action_name" in x["extra"])
+            logger.add(sys.stderr, level="DEBUG", format="{time:MM-DD HH:mm:ss} 【{extra[action_name]}】 - {message}", filter=lambda x: "action_name" in x["extra"])
             # 日志文件名不能使用bind的变量，
-            logger.add("log\\Action_日志.log", rotation="8:00", format="{time:YYYY-MM-DD HH:mm:ss} 【{extra[action_name]}】 - {message}", filter=lambda x: "action_name" in x["extra"])
+            logger.add("log\\Action_日志.log", level="INFO", rotation="8:00", format="{time:YYYY-MM-DD HH:mm:ss} 【{extra[action_name]}】 - {message}", filter=lambda x: "action_name" in x["extra"])
             HAS_ACTION_LOGGER = "YES"
 
     def set_action_parameters(self, action_cfg: ActionConfig) -> None:

@@ -28,6 +28,14 @@ class Result:
     def __str__(self) -> str:
         return "结果：{result} | {msg}".format(result=self.result, msg=self.msg)
 
+    def __eq__(self, other):
+        if not isinstance(other, Result):  # 检查类型一致性
+            return False
+
+        # 比较对象的各个重要属性是否相等
+        return (self.result == other.result and
+                self.msg == other.msg)
+
 
 # =============================================
 # 日志

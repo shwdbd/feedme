@@ -49,11 +49,7 @@ class Ak_SSE_Summary(AbstractAction):
         Returns:
             bool: 执行结果
         """
-        # # 用于单独运行时候
-        # if self.log is None:
-        #     self.log = tl.get_action_logger(action_name=self.name)
-
-        self.log.info("下载 市场总貌|上海证券交易所")
+        self.log.info("下载 Akshare 市场总貌|上海证券交易所 概要数据")
         try:
             engine = get_engine()
             Session = sessionmaker(bind=engine)
