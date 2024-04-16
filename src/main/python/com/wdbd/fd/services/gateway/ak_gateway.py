@@ -9,15 +9,41 @@
 @Desc    :   Akshare数据网关
 '''
 from abc import ABC, abstractmethod
-# import akshare as ak
 from com.wdbd.fd.common.tl import ENVIRONMENT as ENVIRONMENT, d2viewstr
 import logging.config
 from com.wdbd.fd.services.gateway import DataException
+import requests
+import socket
 
 
 class AkshareGateWayError(Exception):
     """自定义的AkshareGateWay错误类"""
-    pass
+
+    def __init__(self, message="Akshare 网关错误", code=0, *args, **kwargs):
+        """
+        初始化异常类实例
+        
+        Args:
+            message (str, optional): 异常信息. 默认为 "Akshare 网关错误".
+            code (int, optional): 异常码. 默认为 0.
+            *args: 其他初始化参数.
+            **kwargs: 其他初始化参数.
+        Returns:
+            None
+        """
+        super().__init__(message)
+        self.code = code
+
+    def __str__(self):
+        """
+        返回异常信息的字符串表示形式，格式为：异常信息（错误码：错误码值）。
+
+        Args:
+            无 
+        Returns:
+            str: 异常信息的字符串表示形式，格式为：异常信息（错误码：错误码值）。
+        """
+        return f"{self.message} (Code: {self.code})"
 
 
 def get_ak_gateway():
@@ -26,10 +52,8 @@ def get_ak_gateway():
 
     Args:
         无
-
     Returns:
         AkshareGateWay: AkshareGateWay对象实例
-
     Raises:
         AkshareGateWayError: 如果无法创建AkshareGateWay对象，将抛出此错误。
     """
@@ -62,13 +86,12 @@ class AkshareGateWay(AbstarctAkshareGateWay):
     def _standardize_symbol(self, symbol: str) -> str:
         """
         标准化资产ID字符串。
-        
+
         Args:
-            symbol (str): 待标准化的资产ID字符串。
-        
+            symbol (str): 待标准化的资产ID字符串, 格式为 600016.SH
         Returns:
-            str: 标准化后的资产ID字符串。
-        
+            str: 标准化后的资产ID字符串, 格式为 600016。
+
         """
         if "." in symbol:
             return symbol[: symbol.find(".")]
@@ -154,3 +177,11 @@ class AkshareGateWay(AbstarctAkshareGateWay):
             config_file_path = r"src\\main\\config\\gw\\akshare.conf"
         logging.config.fileConfig(config_file_path, disable_existing_loggers=False)
         return logging.getLogger('akshare')
+
+    def check_connection(self) -> bool:
+        """ 检测连接 """
+        try:
+            response = requests.get("https://akshare.akfamily.xyz/", timeout=5)  # 设置超时时间，避免长时间等待
+            return response.status_code == 200
+        except (requests.exceptions.RequestException, socket.timeout):
+            return False

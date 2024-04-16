@@ -20,8 +20,33 @@ from loguru import logger
 import pandas as pd
 
 
+class AkshareLoadAction(AbstractAction):
+    # TODO 补充注释
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def check_environment(self) -> tl.Result:
+        return tl.Result()
+
+    def handle(self) -> tl.Result:
+        return tl.Result()
+
+    def rollback(self) -> tl.Result:
+        return tl.Result()
+
+    def extract_data(self) -> pd.DataFrame:
+        return None
+    
+    def transform_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        return None
+
+    def load_data(self, data: pd.DataFrame) -> tl.Result:
+        return None
+
+
 # 市场总貌|上海证券交易所
-class Ak_SSE_Summary(AbstractAction):
+class Ak_SSE_Summary(AkshareLoadAction):
     """
     市场总貌|上海证券交易所
 
@@ -35,7 +60,7 @@ class Ak_SSE_Summary(AbstractAction):
             self.name = "AK 上海证券交易所|市场总貌"
             self.log = logger.bind(action_name=self.name)   # 参数绑定
 
-    def check_environment(self) -> bool:
+    def check_environment(self) -> tl.Result:
         """检查环境，检查当前是否可以进行数据下载
 
         通常子类中会检查需要下载的数据是否已准备好
