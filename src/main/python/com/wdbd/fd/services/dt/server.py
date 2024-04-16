@@ -187,10 +187,10 @@ class BasicEngine(DTEngine):
         # EFFECTS:
         # 1. 更新 comm_server 数据库表
         # END
-        
+
         res = shundown_server()
         return res
-        
+
         # # TODO Group线程的销毁，应该移动到shundown函数中
         # for t in self.threads:
         #     # print(t.is_alive())
@@ -204,7 +204,16 @@ class ServerUtils:
 
     @staticmethod
     def load_group(group_context: dict) -> ActionGroup:
-        """ 根据配置项，解析返回一个ActionGroup对象 """
+        """
+        根据配置项，解析返回一个ActionGroup对象
+
+        Args:
+            group_context (dict): 包含ActionGroup配置信息的字典
+
+        Returns:
+            ActionGroup: 根据配置信息解析生成的ActionGroup对象
+
+        """
         # 组装ActionGroup
         if not group_context or type(group_context) is not dict:
             return None
@@ -212,24 +221,36 @@ class ServerUtils:
         group = ActionGroup()
         group.name = group_context.get("name")
         group.desc = group_context.get("desc")
+
         # Group rules 规则
+        # 遍历group_context中的rules键对应的值
         for rule_name in group_context.get("rules"):
+            # 将rules中的每个规则添加到group的parameters中
             group.parameters[rule_name] = group_context.get("rules").get(rule_name)
 
         # 组装Actions
+        # 遍历group_context中的actions键对应的值
         for action_name in group_context["actions"]:
             action_tag = group_context["actions"][action_name]
 
+            # 创建一个ActionConfig对象
             action = ActionConfig(group=group)
             action.name = action_name
             action.class_url = action_tag.get("class")
+
             # 检查class是否有效
+            # 如果check_classname()返回False，则表示class无效
             if action.check_classname() is False:
                 get_logger().error("Action {name} 的类{c}无法正确识别！，配置文件读取错误".format(name=action.name, c=action.class_url))
                 return None
+
             # Group rules 规则
+            # 遍历group_context中的rules键对应的值
             for rule_name in group_context.get("rules"):
+                # 将rules中的每个规则添加到action的parameters中
                 action.parameters[rule_name] = group_context.get("rules").get(rule_name)
+
+            # 将action添加到group中
             group.append_action(action)
 
         return group

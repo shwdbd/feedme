@@ -146,3 +146,8 @@ class TestServerUtils(unittest.TestCase):
 
         # 空
         self.assertTrue(ServerUtils.is_in_action_windows(windows=[], _test_time="080000"))
+
+
+# 运行测试
+if __name__ == '__main__':
+    unittest.main()

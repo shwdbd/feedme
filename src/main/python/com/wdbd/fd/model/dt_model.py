@@ -178,6 +178,15 @@ class AbstractAction(ABC):
     """ 抽象数据操作类 """
 
     def __init__(self) -> None:
+        """
+        初始化函数，用于初始化类的实例。
+
+        Args:
+            无
+
+        Returns:
+            None
+        """
         self.parameters = {
             "windows": [],
             "once_on_day": True
@@ -186,20 +195,18 @@ class AbstractAction(ABC):
         self.name = None        # Action名
         # 设置专用的Action日志器
         self.init_action_logger(self.name)
-        self.log = logger.bind(action_name=self.name)   # 参数绑定
-        # self.log = None
 
     def init_action_logger(self, name):
         """ 初始化Action日志 """
         global HAS_ACTION_LOGGER
         if HAS_ACTION_LOGGER is None:
-            # print("init logger")
             logger.remove()
             # 初始化日志配置
             logger.add(sys.stderr, level="DEBUG", format="{time:MM-DD HH:mm:ss} 【{extra[action_name]}】 - {message}", filter=lambda x: "action_name" in x["extra"])
             # 日志文件名不能使用bind的变量，
             logger.add("log\\Action_日志.log", level="INFO", rotation="8:00", format="{time:YYYY-MM-DD HH:mm:ss} 【{extra[action_name]}】 - {message}", filter=lambda x: "action_name" in x["extra"])
             HAS_ACTION_LOGGER = "YES"
+        self.log = logger.bind(action_name=self.name)   # 参数绑定
 
     def set_action_parameters(self, action_cfg: ActionConfig) -> None:
         # 赋值Action配置参数传入

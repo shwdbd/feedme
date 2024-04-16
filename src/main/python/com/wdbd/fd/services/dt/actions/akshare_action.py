@@ -17,6 +17,7 @@ from sqlalchemy.orm import sessionmaker
 import com.wdbd.fd.common.tl as tl
 from sqlalchemy.exc import SQLAlchemyError as SQLAlchemyError
 from loguru import logger
+import pandas as pd
 
 
 # 市场总貌|上海证券交易所
@@ -27,11 +28,11 @@ class Ak_SSE_Summary(AbstractAction):
     DOC: https://lxhcvhnie6k.feishu.cn/docx/DrErdGaWBodRRIxFMVYcTB0rnBf#M6zmdZRMJotFngx9DTOcPCnrnhf
     """
 
-    def __init__(self, name: str = None) -> None:
+    def __init__(self) -> None:
         super().__init__()
         self.gw = get_ak_gateway()  # 数据网关
-        if name:
-            self.name = "市场总貌、上海证券交易所"
+        if not self.name:
+            self.name = "AK 上海证券交易所|市场总貌"
             self.log = logger.bind(action_name=self.name)   # 参数绑定
 
     def check_environment(self) -> bool:
@@ -43,54 +44,95 @@ class Ak_SSE_Summary(AbstractAction):
         """
         return Result()
 
-    def handle(self) -> bool:
-        """数据处理函数，子类必须实现
-
-        Returns:
-            bool: 执行结果
+    def extract_data(self) -> pd.DataFrame:
         """
-        self.log.info("下载 Akshare 市场总貌|上海证券交易所 概要数据")
+        从股票行情数据接口获取上证指数汇总数据，并返回 pandas DataFrame 格式的数据。
+
+        Args:
+            无
+        Returns:
+            pd.DataFrame: 包含上证指数汇总数据的 pandas DataFrame。
+        """
+        df = self.gw.call(callback=ak.stock_sse_summary)
+        return df
+
+    def transform_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        对数据进行清洗、转换等操作。
+
+        Args:
+            data (pd.DataFrame): 原始数据，DataFrame类型。
+        Returns:
+            pd.DataFrame: 清洗后的数据，DataFrame类型。
+        Raises:
+            TypeError: 当输入数据不是pd.DataFrame类型时，抛出类型错误异常。
+        """
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError("数据类型错误")
+
+        if data.empty:  # 如果数据为空
+            raise TypeError("获取数据为空")
+
+        # 数据清洗
+        data = data.set_index('项目')
+        data = data.T
+        data = data.reset_index()   # 将索引列变为第一列
+        # 修改列名，与db中一致
+        new_column_names = {
+            'index': 'market',
+            '流通股本': 'ltgb',
+            '总市值': 'zsz',  # 修正了重复的键
+            '平均市盈率': 'pjsyl',
+            '上市公司': 'ssgs',
+            '上市股票': 'ssgp',
+            '流通市值': 'tlsz',
+            '总股本': 'zgb',
+        }
+        data = data.rename(columns=new_column_names)
+
+        # 添加对'报告时间'列存在性和非空性的检查
+        if '报告时间' in data.columns and not data['报告时间'].empty:
+            trade_date = data['报告时间'][0]  # 报告日期
+            data["trade_date"] = trade_date
+            data.drop('报告时间', axis=1, inplace=True)
+        else:
+            # 根据实际需求处理，这里可以添加一个警告或者设置一个默认值
+            print("警告：'报告时间'列不存在或为空。")
+            # raise TypeError("警告：'报告时间'列不存在或为空。")
+
+        return data
+
+    def load_data(self, data: pd.DataFrame) -> tl.Result:
+        """
+        从 pandas DataFrame 加载数据到数据库
+
+        Args:
+            data (pd.DataFrame): 包含要加载到数据库的数据的 pandas DataFrame
+        Returns:
+            None
+        Raises:
+            DataException: Akshare获取数据异常
+            SQLAlchemyError: SQLAlchemy数据库异常
+        """
+        session = None
         try:
             engine = get_engine()
             Session = sessionmaker(bind=engine)
             session = Session()
 
-            # 获取数据
-            df = self.gw.call(callback=ak.stock_sse_summary)
-            if df.empty:    # 如果返回为空
-                return Result()
-            # 数据清洗
-            df = df.set_index('项目')
-            df = df.T
-            df = df.reset_index()   # 将索引列变为第一列
-            # 修改列名，与db中一致
-            new_column_names = {'index': 'market',
-                                '流通股本': 'ltgb',
-                                '总市值': 'zsz',
-                                '总市值': 'zsz',
-                                '平均市盈率': 'pjsyl',
-                                '上市公司': 'ssgs',
-                                '上市股票': 'ssgp',
-                                '流通市值': 'tlsz',
-                                '总股本': 'zgb',
-                                }
-            df = df.rename(columns=new_column_names)
-            trade_date = df['报告时间'][0]  # 报告日期
-            df["trade_date"] = trade_date
-            df.drop('报告时间', axis=1, inplace=True)
-            # print(df)
+            trade_date = data['trade_date'][0]
 
             # 删除现有的数据
             t_ods_akshare_stock_sse_summary = DB_POOL.get("ods_akshare_stock_sse_summary")
             session.query(t_ods_akshare_stock_sse_summary).filter(t_ods_akshare_stock_sse_summary.c.trade_date == trade_date).delete()
             session.commit()
 
-            # 写入数据库
-            df.to_sql(name='ods_akshare_stock_sse_summary', con=engine, if_exists='append', index=False)
+            # 写入数据库, Write to the database
+            data.to_sql(name='ods_akshare_stock_sse_summary', con=engine, if_exists='append', index=False)
 
-            self.log.info("市场总貌|上海证券交易所 ({0}) 更新完成".format(trade_date))
+            self.log.info("表 ods_akshare_stock_sse_summary 更新完成")
 
-            return Result()
+            return Result(True, "")
         except DataException as dwe:
             msg = "Akshare获取数据异常，" + str(dwe)
             self.log.error(msg)
@@ -100,7 +142,44 @@ class Ak_SSE_Summary(AbstractAction):
             self.log.error(msg)
             return tl.Result(result=False, msg=msg)
         finally:
-            session.close()
+            if session:  # Check if session is defined before closing
+                session.close()
+
+    def handle(self) -> tl.Result:
+        # self.log.info("下载 Akshare 市场总貌|上海证券交易所 概要数据")
+        # # 提取数据
+        # data = self.extract_data()
+
+        # # 转换数据（清洗等）
+        # data_transformed = self.transform_data(data)
+
+        # # 加载数据（存储）
+        # self.load_data(data_transformed)
+
+        # return tl.Result()
+        self.log.info("Downloading Akshare market overview | SSE summary data")
+
+        try:
+            # 提取数据
+            data = self.extract_data()
+            if data is None:
+                self.log.error("Failed to extract data")
+                return tl.Result(result=False, msg="Failed to extract data")
+
+            # 转换数据（清洗等）
+            data_transformed = self.transform_data(data)
+            if data_transformed is None:
+                self.log.error("Failed to transform data")
+                return tl.Result(result=False, msg="Failed to transform data")
+
+            # 加载数据（存储）
+            self.load_data(data_transformed)
+            self.log.info("Data loaded successfully")
+
+            return tl.Result(result=True, msg="Downloading Akshare market overview | SSE summary data successfully")  # 返回一个具体的对象，表示操作成功
+        except Exception as e:
+            self.log.exception("An error occurred during data handling")
+            return tl.Result(result=False, msg=f"An error occurred during data handling | {str(e)}")
 
     def rollback(self) -> bool:
         """错误发生时，回滚动作函数
@@ -120,10 +199,12 @@ class Ak_Stock_Cal(AbstractAction):
     """
 
     def __init__(self) -> None:
-        self.name = "交易日历"
         self.gw = get_ak_gateway()  # 数据网关
         self.DOWNLOAD_ALL = False    # 全量参数
         super().__init__()
+        if not self.name:
+            self.name = "AK 交易日历"
+            self.log = logger.bind(action_name=self.name)   # 参数绑定
 
     def check_environment(self) -> bool:
         """检查环境，检查当前是否可以进行数据下载
@@ -474,13 +555,11 @@ class AkStockHistoryData(AbstractAction):
         self.gw = get_ak_gateway()  # 数据网关
         # 初始化Action日志
         self.__init_log()
-        
         super().__init__()
 
     def __init_log():
         # 初始化Action日志
         pass
-        
 
     def check_environment(self) -> bool:
         return Result()
@@ -598,12 +677,18 @@ class AkStockHistoryData(AbstractAction):
 
 
 if __name__ == "__main__":
-    # 股票存量下载
-    cfg = ActionConfig()
-    cfg.p["DOWNLOAD_ALL"] = True
-    action = AkStockHistoryData()
-    action.set_action_parameters(cfg)
-    action.handle()
+    action = Ak_SSE_Summary()
+    res = action.handle()
+    print(res.result)
+
+
+# if __name__ == "__main__":
+#     # 股票存量下载
+#     cfg = ActionConfig()
+#     cfg.p["DOWNLOAD_ALL"] = True
+#     action = AkStockHistoryData()
+#     action.set_action_parameters(cfg)
+#     action.handle()
 
 
 # if __name__ == "__main__":

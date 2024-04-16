@@ -9,18 +9,39 @@
 @Desc    :   Akshare数据网关
 '''
 from abc import ABC, abstractmethod
-import akshare as ak
+# import akshare as ak
 from com.wdbd.fd.common.tl import ENVIRONMENT as ENVIRONMENT, d2viewstr
 import logging.config
 from com.wdbd.fd.services.gateway import DataException
 
 
-# 获取数据网关 对外接口
-def get_ak_gateway(mode: str = None):
-    if mode is not None and "mock" in mode.lower():
-        return AkGatewayMock()
-    else:
-        return AkshareGateWay()
+class AkshareGateWayError(Exception):
+    """自定义的AkshareGateWay错误类"""
+    pass
+
+
+def get_ak_gateway():
+    """
+    获取Akshare网关对象实例。使用单例模式以避免重复创建对象，同时增加了异常处理逻辑。
+
+    Args:
+        无
+
+    Returns:
+        AkshareGateWay: AkshareGateWay对象实例
+
+    Raises:
+        AkshareGateWayError: 如果无法创建AkshareGateWay对象，将抛出此错误。
+    """
+    # 采用单例模式
+    try:
+        if not hasattr(get_ak_gateway, "_instance"):
+            get_ak_gateway._instance = AkshareGateWay()
+        return get_ak_gateway._instance
+    except Exception as e:
+        # 自定义异常处理，提供更友好的错误信息
+        error_message = f"无法创建AkshareGateWay对象: {str(e)}"
+        raise AkshareGateWayError(error_message)
 
 
 class AbstarctAkshareGateWay(ABC):
@@ -39,7 +60,16 @@ class AkshareGateWay(AbstarctAkshareGateWay):
         self.gw_logger = self._init_log_gw()     # 加载专用日志
 
     def _standardize_symbol(self, symbol: str) -> str:
-        """ 标准化入参, 资产ID """
+        """
+        标准化资产ID字符串。
+        
+        Args:
+            symbol (str): 待标准化的资产ID字符串。
+        
+        Returns:
+            str: 标准化后的资产ID字符串。
+        
+        """
         if "." in symbol:
             return symbol[: symbol.find(".")]
         else:
@@ -124,28 +154,3 @@ class AkshareGateWay(AbstarctAkshareGateWay):
             config_file_path = r"src\\main\\config\\gw\\akshare.conf"
         logging.config.fileConfig(config_file_path, disable_existing_loggers=False)
         return logging.getLogger('akshare')
-
-
-class AkGatewayMock(AkshareGateWay):
-
-    def symbol_2_tscode(self, symbol) -> str:
-        return "600016.SH"
-
-
-if __name__ == "__main__":
-    # gw = get_ak_gateway()
-    # print(gw.symbol_2_tscode("sh00001"))
-    # gw = get_ak_gateway(mode='mock')
-    # print(gw.symbol_2_tscode("sh00001"))
-
-    # 调用：
-    gw = get_ak_gateway()
-    # print(gw)
-    # df = gw.call(callback=ak.stock_zh_a_hist, symbol="600016", start_date="20240225", end_date="20240228")
-    # # df = gw.call(callback=ak.stock_zh_a_hist_xxx, symbol="600016", start_date="20240225", end_date="20240228")
-    # df = gw.call(callback=ak.stock_zh_a_hist, symbol="aaaaaa", start_date="20240225", end_date="20240228")
-    df = gw.call(callback=ak.tool_trade_date_hist_sina)
-    print(df)
-    
-    # # 单独日志
-    # gw = AkshareGateWay()

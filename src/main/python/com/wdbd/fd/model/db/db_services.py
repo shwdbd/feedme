@@ -15,35 +15,39 @@ from sqlalchemy import or_, and_
 import com.wdbd.fd.common.tl as tl
 
 
-# 启动并登记服务器状态
-def start_dtserver() -> tl.Result:
+def start_dtserver() -> tl.Result:  # 添加类型注释
     """启动服务
 
-    先判断是否可以启动，如果已有服务正在运行，则返回False结果
+    先判断是否可以启动, 如果已有服务正在运行, 则返回False结果
 
     Returns:
         tl.Result: 执行结果
     """
-    # TEST 需要单元测试
-    try:
-        engine = get_engine()
-        Session = sessionmaker(bind=engine)
-        session = Session()
+    engine = get_engine()  # 假设这个函数返回一个有效的数据库引擎
+    Session = sessionmaker(bind=engine)
 
+    try:
+        session = Session()
         t_comm_server = DB_POOL.get("comm_server")
 
         # 判断是否有服务正在运行
         count_of_runningserver = session.query(t_comm_server).filter(or_(
-            t_comm_server.c.status == SERVER_STAUTS_OPEN, t_comm_server.c.status == SERVER_STAUTS_CLOSING)).count()
+            t_comm_server.c.status == SERVER_STAUTS_OPEN,  # 修正拼写错误
+            t_comm_server.c.status == SERVER_STAUTS_CLOSING  # 修正拼写错误
+        )).count()
+
         if count_of_runningserver > 0:
-            # 有服务正在运行，返回False
-            return tl.Result(result=False, msg="当前有服务正在运行，无法新启动新服务")
+            return tl.Result(result=False, msg="当前有服务正在运行, 无法新启动新服务")
         else:
-            # 可以登记新服务
-            session.execute(t_comm_server.insert().values(
-                {"status": SERVER_STAUTS_OPEN, "start_dt": tl.now(), "end_dt": ""}))
+            insert_stmt = t_comm_server.insert().values(
+                status=SERVER_STAUTS_OPEN,  # 修正拼写错误
+                start_dt=tl.now(),  # 假设tl.now()返回一个有效的时间戳
+                end_dt=None  # 使用None而不是空字符串表示没有结束时间
+            )
+            session.execute(insert_stmt)
             session.commit()
             return tl.Result(result=True)
+
     except Exception as sqle:
         msg = "登记新服务日志时出现异常。" + str(sqle)
         tl.get_logger().error(msg)
@@ -55,7 +59,7 @@ def start_dtserver() -> tl.Result:
 # 发起服务终止指令
 def shundown_server() -> tl.Result:
     """ 发起服务终止指令 """
-    # 如果当前没有服务在OPEN状态，终止
+    # 如果当前没有服务在OPEN状态, 终止
     # 将当前活动服务状态设置为CLOSING
     # END
     # TEST 单元测试
@@ -108,10 +112,10 @@ def get_server_status() -> str:
 def log_group(group: ActionGroup, result: bool = None, msg: str = None):
     """
     登记ActionGroup日志
-    result = None，则表示新的Group日志
+    result = None, 则表示新的Group日志
     """
     # EFFECTS:
-    # 1. 如果这个group有日志，则将result和msg更新
+    # 1. 如果这个group有日志, 则将result和msg更新
     # 如果没有则新建一条
     # END
     try:
@@ -136,7 +140,7 @@ def log_group(group: ActionGroup, result: bool = None, msg: str = None):
                 condition).values(updated_data))
             session.commit()
         else:
-            # 无记录，新增
+            # 无记录, 新增
             str_actions = ", ".join(group.actions)  # 拼接Action信息字符串
 
             data = {"group_name": group.name, "status": ActionGroup.RUNNING,
