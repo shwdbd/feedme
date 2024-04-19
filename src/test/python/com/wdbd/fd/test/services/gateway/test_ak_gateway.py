@@ -87,6 +87,40 @@ class TestAKGateway(unittest.TestCase):
             gw = AkshareGateWay()
             assert gw.check_connection() is False
 
+    def test_symbol_exchange_2_tscode(self):
+        akgw = get_ak_gateway()
+        result = akgw.symbol_exchange_2_tscode("600016", "SH")
+        assert result == "600016.SH", result
+
+        result = akgw.symbol_exchange_2_tscode("600016", "SZ")
+        assert result == "600016.SZ", result
+
+        result = akgw.symbol_exchange_2_tscode("600016", "XX")
+        assert result == "600016.XX", result
+
+        # 错误的股票代码，返回原值
+        result = akgw.symbol_exchange_2_tscode("60001A", "SH")  
+        assert result == "60001A", result
+
+        result = akgw.symbol_exchange_2_tscode("60001A", "XX")
+        assert result == "60001A", result
+
+        result = akgw.symbol_exchange_2_tscode("00700", "HK")   # 长度不够
+        assert result == "00700", result
+
+        result = akgw.symbol_exchange_2_tscode("", "HK")
+        assert result == "", result
+
+        result = akgw.symbol_exchange_2_tscode("", "")
+        assert result == "", result
+
+        result = akgw.symbol_exchange_2_tscode("600016.SH", "SH")
+        assert result == "600016.SH", result
+
+        # 错误的输入参数
+        result = akgw.symbol_exchange_2_tscode(unittest.mock.MagicMock(), "SH")
+        self.assertIsInstance(result, unittest.mock.MagicMock)
+
 
 class TestGetAkGateway(unittest.TestCase):
 
@@ -132,6 +166,51 @@ class TestAKGateway_Standardize(unittest.TestCase):
         expected = "SH600016"
         standardized = self.gateway._standardize_symbol(symbol)
         self.assertEqual(standardized, expected, f"Failed for symbol: {symbol}")
+
+
+class TestAKGateway_JudgeStockExchange(unittest.TestCase):
+    """ 测试 根据A股股票代码判断其所属的交易所和板块 """
+
+    def setUp(self) -> None:
+        self.gw = get_ak_gateway()
+        return super().setUp()
+
+    def test_valid_shanghai_stock(self):
+        # 测试上海证券交易所主板股票
+        self.assertEqual(self.gw.judge_stock_exchange('600000'), ('SH', '主板'))
+
+    def test_valid_shanghai_tech_board_stock(self):
+        # 测试上海证券交易所科创板股票
+        self.assertEqual(self.gw.judge_stock_exchange('688000'), ('SH', '科创板'))
+
+    def test_valid_shenzhen_main_board_stock(self):
+        # 测试深圳证券交易所主板/中小板股票
+        self.assertEqual(self.gw.judge_stock_exchange('000001'), ('SZ', '主板/中小板'))
+
+    def test_valid_shenzhen_chi_next_stock(self):
+        # 测试深圳证券交易所创业板股票
+        self.assertEqual(self.gw.judge_stock_exchange('300001'), ('SZ', '创业板'))
+
+    def test_valid_beijing_old_third_board_stock(self):
+        # 测试北京证券交易所老三板股票
+        self.assertEqual(self.gw.judge_stock_exchange('400001'), ('BJ', '老三板'))
+
+    def test_valid_beijing_new_third_board_stock(self):
+        # 测试北京证券交易所新三板股票
+        self.assertEqual(self.gw.judge_stock_exchange('430001'), ('BJ', '新三板'))
+        self.assertEqual(self.gw.judge_stock_exchange('830001'), ('BJ', '新三板'))
+
+    def test_invalid_stock_code_length(self):
+        # 测试股票代码长度不足6位的无效情况
+        self.assertEqual(self.gw.judge_stock_exchange('600'), ('无效的股票代码', ''))
+
+    def test_invalid_stock_code_format(self):
+        # 测试股票代码格式错误的无效情况
+        self.assertEqual(self.gw.judge_stock_exchange('600A00'), ('无效的股票代码', ''))
+
+    def test_invalid_stock_code_non_numeric(self):
+        # 测试股票代码包含非数字字符的无效情况
+        self.assertEqual(self.gw.judge_stock_exchange('60000A'), ('无效的股票代码', ''))
 
 
 if __name__ == "__main__":

@@ -166,7 +166,14 @@ class AkshareGateWay(AbstarctAkshareGateWay):
 
     def symbol_exchange_2_tscode(self, symbol, exchange) -> str:
         """ 600016 变为 600016.SH """
-        return "{s}.{exchange}".format(s=symbol, exchange=exchange)
+        try:
+            if not symbol.isdigit() or len(symbol) != 6:
+                return symbol
+            if not exchange.isalpha() or len(exchange) != 2:
+                return symbol
+            return f"{symbol}.{exchange}"
+        except Exception:
+            return symbol
 
     # 加载专用日志管理器
     def _init_log_gw(self):
@@ -185,3 +192,53 @@ class AkshareGateWay(AbstarctAkshareGateWay):
             return response.status_code == 200
         except (requests.exceptions.RequestException, socket.timeout):
             return False
+
+    def judge_stock_exchange(self, stock_code: str) -> tuple[str, str]:
+        """
+        根据A股股票代码判断其所属的交易所和板块
+
+        参数:
+            stock_code (str): A股股票代码，如'600000'或'000001'
+
+        返回:
+            tuple[str, str]: 交易所代码和板块类型，例如('SH', '主板')或('SZ', '创业板')
+        """
+        if not isinstance(stock_code, str) or len(stock_code) != 6:
+            return "无效的股票代码", ""
+        if not stock_code.isdigit():
+            return "无效的股票代码", ""
+
+        # 提取股票代码的前缀
+        first_digit = stock_code[:1]
+        prefix = stock_code[:3]
+
+        # 初始化返回值
+        exchange, board = "", ""
+
+        # 判断所属交易所和板块
+        if first_digit == '6':
+            exchange = "SH"  # 上海证券交易所
+            if prefix.startswith('60'):
+                board = "主板"
+            elif prefix.startswith('68'):
+                board = "科创板"
+        elif first_digit == '0':
+            exchange = "SZ"  # 深圳证券交易所
+            if prefix.startswith('00'):
+                board = "主板/中小板"  # 由于中小板已经合并到主板，可以合并标注
+            elif prefix.startswith('03'):  # 实际上并不存在03开头的深交所股票代码，此处仅作为示例
+                board = "未知板块"  # 实际情况下，应处理或删除不存在的代码段
+        elif first_digit == '3':
+            exchange = "SZ"  # 深圳证券交易所
+            board = "创业板"
+        elif first_digit in ['4', '8']:
+            # 注意：此处简化了北京证券交易所股票代码的判断逻辑，实际上需要更复杂的判断条件
+            exchange = "BJ"  # 北京证券交易所（新三板和老三板实际上由全国股转公司管理）
+            if prefix.startswith('40'):
+                board = "老三板"
+            elif prefix.startswith('43') or first_digit == '8':
+                board = "新三板"
+
+        return exchange, board
+
+    

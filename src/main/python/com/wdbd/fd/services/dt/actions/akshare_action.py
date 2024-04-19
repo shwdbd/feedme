@@ -8,7 +8,7 @@
 @Contact :   shwangjj@163.com
 @Desc    :   Akshare 数据源处理
 '''
-from com.wdbd.fd.model.dt_model import AbstractAction, ActionConfig
+from com.wdbd.fd.model.dt_model import AbstractAction
 from com.wdbd.fd.common.tl import Result
 from com.wdbd.fd.services.gateway.ak_gateway import get_ak_gateway, DataException
 import akshare as ak
@@ -20,24 +20,41 @@ from loguru import logger
 import pandas as pd
 
 
+# 基类
 class AkshareLoadAction(AbstractAction):
-    # TODO 补充注释
+    """Akshare 数据源下载模块
+    """
 
     def __init__(self) -> None:
+        self.gw = get_ak_gateway()  # Ak数据网关
         super().__init__()
 
     def check_environment(self) -> tl.Result:
-        return tl.Result()
+        """
+        检查与数据网关的连接是否正常。
+
+        Args:
+            无
+        Returns:
+            tl.Result: 返回一个Result对象，表示连接是否成功。
+        """
+        if self.gw is None:
+            return Result(result=False, msg="数据网关对象未初始化")
+
+        if self.gw.check_connection():
+            return Result(result=True)
+        else:
+            return Result(result=False, msg="Ak数据网关连接失败")
 
     def handle(self) -> tl.Result:
         return tl.Result()
 
     def rollback(self) -> tl.Result:
-        return tl.Result()
+        return Result(result=True)
 
     def extract_data(self) -> pd.DataFrame:
         return None
-    
+
     def transform_data(self, data: pd.DataFrame) -> pd.DataFrame:
         return None
 
@@ -46,28 +63,19 @@ class AkshareLoadAction(AbstractAction):
 
 
 # 市场总貌|上海证券交易所
-class Ak_SSE_Summary(AkshareLoadAction):
+class AkSSESummaryDataDownloader(AkshareLoadAction):
     """
-    市场总貌|上海证券交易所
+    市场总貌|上海证券交易所 数据下载
 
-    DOC: https://lxhcvhnie6k.feishu.cn/docx/DrErdGaWBodRRIxFMVYcTB0rnBf#M6zmdZRMJotFngx9DTOcPCnrnhf
+    说明：
+    从 ak.stock_sse_summary 获取最新数据, 存入ods_akshare_stock_sse_summary表, 每天3条交流
     """
 
     def __init__(self) -> None:
         super().__init__()
-        self.gw = get_ak_gateway()  # 数据网关
         if not self.name:
             self.name = "AK 上海证券交易所|市场总貌"
             self.log = logger.bind(action_name=self.name)   # 参数绑定
-
-    def check_environment(self) -> tl.Result:
-        """检查环境，检查当前是否可以进行数据下载
-
-        通常子类中会检查需要下载的数据是否已准备好
-        Returns:
-            bool: 检查结果
-        """
-        return Result()
 
     def extract_data(self) -> pd.DataFrame:
         """
@@ -118,7 +126,7 @@ class Ak_SSE_Summary(AkshareLoadAction):
         # 添加对'报告时间'列存在性和非空性的检查
         if '报告时间' in data.columns and not data['报告时间'].empty:
             trade_date = data['报告时间'][0]  # 报告日期
-            data["trade_date"] = trade_date
+            data["trade_date"] = str(trade_date)
             data.drop('报告时间', axis=1, inplace=True)
         else:
             # 根据实际需求处理，这里可以添加一个警告或者设置一个默认值
@@ -146,14 +154,18 @@ class Ak_SSE_Summary(AkshareLoadAction):
             session = Session()
 
             trade_date = data['trade_date'][0]
+            # print(trade_date)
 
             # 删除现有的数据
-            t_ods_akshare_stock_sse_summary = DB_POOL.get("ods_akshare_stock_sse_summary")
-            session.query(t_ods_akshare_stock_sse_summary).filter(t_ods_akshare_stock_sse_summary.c.trade_date == trade_date).delete()
+            t_ods_akshare_stock_sse_summary = DB_POOL.get(
+                "ods_akshare_stock_sse_summary")
+            session.query(t_ods_akshare_stock_sse_summary).filter(
+                t_ods_akshare_stock_sse_summary.c.trade_date == trade_date).delete()
             session.commit()
 
             # 写入数据库, Write to the database
-            data.to_sql(name='ods_akshare_stock_sse_summary', con=engine, if_exists='append', index=False)
+            data.to_sql(name='ods_akshare_stock_sse_summary',
+                        con=engine, if_exists='append', index=False)
 
             self.log.info("表 ods_akshare_stock_sse_summary 更新完成")
 
@@ -171,17 +183,14 @@ class Ak_SSE_Summary(AkshareLoadAction):
                 session.close()
 
     def handle(self) -> tl.Result:
-        # self.log.info("下载 Akshare 市场总貌|上海证券交易所 概要数据")
-        # # 提取数据
-        # data = self.extract_data()
+        """
+        下载 Akshare 市场概述 | SSE 汇总数据
 
-        # # 转换数据（清洗等）
-        # data_transformed = self.transform_data(data)
-
-        # # 加载数据（存储）
-        # self.load_data(data_transformed)
-
-        # return tl.Result()
+        Args:
+            无
+        Returns:
+            tl.Result: 返回一个具体的对象，表示操作是否成功
+        """
         self.log.info("Downloading Akshare market overview | SSE summary data")
 
         try:
@@ -198,130 +207,136 @@ class Ak_SSE_Summary(AkshareLoadAction):
                 return tl.Result(result=False, msg="Failed to transform data")
 
             # 加载数据（存储）
-            self.load_data(data_transformed)
-            self.log.info("Data loaded successfully")
+            result = self.load_data(data_transformed)
 
-            return tl.Result(result=True, msg="Downloading Akshare market overview | SSE summary data successfully")  # 返回一个具体的对象，表示操作成功
+            if result and result.result:
+                self.log.info("Akshare market overview Data loaded successfully")
+                return tl.Result(result=True, msg="Downloading Akshare market overview | SSE summary data successfully")
+            else:
+                self.log.error("Akshare market overview Data 下载失败！")
+                return tl.Result(result=False, msg=f"Downloading Akshare market overview | SSE summary data Failed. {result.msg}")
         except Exception as e:
             self.log.exception("An error occurred during data handling")
             return tl.Result(result=False, msg=f"An error occurred during data handling | {str(e)}")
 
-    def rollback(self) -> bool:
-        """错误发生时，回滚动作函数
-
-        Returns:
-            bool: 回滚操作执行结果
-        """
-        return Result()
-
 
 # 交易日历
-class Ak_Stock_Cal(AbstractAction):
+class AkStockCalDownloader(AkshareLoadAction):
     """
-    交易日历
+    下载Ak交易日历数据
 
-    DOC: https://lxhcvhnie6k.feishu.cn/docx/DrErdGaWBodRRIxFMVYcTB0rnBf#part-I36ndQh0Fo3d4sxyUvCcZeg2nxc
+    规则：
+    1. 参数DOWNLOAD_ALL, 如果为True，则全量覆盖下载
+    2. 每年11、12月下载下一年数据。
     """
 
     def __init__(self) -> None:
         self.gw = get_ak_gateway()  # 数据网关
-        self.DOWNLOAD_ALL = False    # 全量参数
         super().__init__()
         if not self.name:
             self.name = "AK 交易日历"
             self.log = logger.bind(action_name=self.name)   # 参数绑定
+        self.DOWNLOAD_ALL = False    # 全量参数
 
-    def check_environment(self) -> bool:
-        """检查环境，检查当前是否可以进行数据下载
-
-        通常子类中会检查需要下载的数据是否已准备好
-        Returns:
-            bool: 检查结果
+    def _get_year_to_down(self):
         """
-        return Result()
+        获取需要下载的年份
 
-    def _get_year_to_down(self, db_session):
+        Args:
+            无
+        Returns:
+            Union[str, None]: 需要下载的年份，如果不需要下载，则返回None
+        """
         # 判断到底更新哪一年的数据
         # 如果这年有数据，且大于200，则不用更新
-        year_to_down = None   # 拟下载的数据年份
         today = tl.today()
         year = today[:4]
         month = today[4:6]
 
-        t_cal = DB_POOL.get("ods_akshare_tool_trade_date_hist_sina")
-
-        if int(month) in [11, 12]:
-            count = db_session.query(t_cal).filter(t_cal.c.trade_date >= (str(int(year) + 1)+"0101")).filter(t_cal.c.trade_date <= (str(int(year) + 1)+"1231")).count()
-            # print(count)
-            if count < 200:
-                year_to_down = str(int(year) + 1)   # 下一年 
-        else:
-            count = db_session.query(t_cal).filter(t_cal.c.trade_date >= (year+"0101")).filter(t_cal.c.trade_date <= (year+"1231")).count()
-            # print(count)
-            if count < 200:
-                year_to_down = year     # 今年
-        # print("year_to_down = " + year_to_down)
-        return year_to_down
-
-    def handle(self) -> bool:
-        """数据处理函数，子类必须实现
-
-        Returns:
-            bool: 执行结果
-        """
-        # TEST 待测试
-        # 用于单独运行时候
-        if self.log is None:
-            self.log = tl.get_action_logger(action_name=self.name)
-            # self.log = tl.get_logger()
-
-        self.log.info("下载 股票交易日历")
+        engine = None
         try:
             engine = get_engine()
             Session = sessionmaker(bind=engine)
             session = Session()
 
-            if self.DOWNLOAD_ALL is False:
-                year_to_down = self._get_year_to_down(session)     # 判断是否要更新数据
-                self.log.info("更新数据年份：" + str(year_to_down))
+            t_trade_calendar = DB_POOL.get("ods_akshare_tool_trade_date_hist_sina")
 
-            # 取得全量数据
-            df = self.gw.call(callback=ak.tool_trade_date_hist_sina)
-            # 数据清洗
-            df = df.astype({'trade_date': str})
-            df["trade_date"] = df["trade_date"].apply(tl.d2dbstr)
-            # print(df)
+            if int(month) in [11, 12]:
+                # 如果当前时间为11月或12月，则根据库中下一年的数据是否存在，判断是否要下载下一年数据
+                count = session.query(t_trade_calendar).filter(t_trade_calendar.c.trade_date >= (str(int(
+                    year) + 1)+"0101")).filter(t_trade_calendar.c.trade_date <= (str(int(year) + 1)+"1231")).count()
+                if count < 200:
+                    # 如果下一年库中下一年的日历数据少于200，则需要重新下载
+                    return str(int(year) + 1)   # 下一年
+                else:
+                    return None
+            else:
+                # 如果当前日期不是11月、12月（年末），则根据库中下今年的数据是否存在，判断是否要下载今年数据
+                count = session.query(t_trade_calendar).filter(t_trade_calendar.c.trade_date >= (
+                    year+"0101")).filter(t_trade_calendar.c.trade_date <= (year+"1231")).count()
+                # print(count)
+                if count < 200:
+                    return year     # 今年
+                else:
+                    return None
+        except (DataException, SQLAlchemyError) as e:
+            msg = f"获取数据时发生异常: {e}"
+            self.log.error(msg)
+            return None  # 根据函数定义，这里应该返回 None 或 str 类型，而不是 tl.Result
+        finally:
+            if engine:
+                session.close()
 
-            if df.empty:    # 如果返回为空
-                return Result(result=False, msg="数据返回为空！")
-            # 过滤符合条件的df数据
+    def extract_data(self) -> pd.DataFrame:
+        data = self.gw.call(callback=ak.tool_trade_date_hist_sina)
+        return data
+
+    def transform_data(self, data: pd.DataFrame, year_to_down: str) -> pd.DataFrame:
+        # 数据清洗
+        data = data.astype({'trade_date': str})
+        data["trade_date"] = data["trade_date"].apply(tl.d2dbstr)
+
+        if not self.DOWNLOAD_ALL and year_to_down:
+            self.log.debug(f"只更新{year_to_down}年数据")
+            # 只保留这一年的数据
+            start_dt = f"{year_to_down}0101"
+            end_dt = f"{year_to_down}1231"
+            data = data[(data['trade_date'] >= start_dt) & (data['trade_date'] <= end_dt)]
+        return data
+
+    def load_data(self, data: pd.DataFrame, year_to_down: str) -> tl.Result:
+        # if self.DOWNLOAD_ALL is False or not year_to_down:
+        #     self.log.info("不更新交易日历数据")
+        #     return tl.Result(result=True, msg="No need to update data")
+        engine = None
+        try:
+            engine = get_engine()
+            Session = sessionmaker(bind=engine)
+            session = Session()
+
+            # 如果是全量更新:
             if self.DOWNLOAD_ALL:
-                # 全量下载，现删除现有数据
                 t_cal = DB_POOL.get("ods_akshare_tool_trade_date_hist_sina")
+                # 全表删除
                 session.query(t_cal).delete()
                 session.commit()
-            elif year_to_down is not None:
-                # 过滤后只剩余特定年饭的数据
-                self.log.debug("只更新{0}年数据".format(year_to_down))
-                start_dt = "{0}0101".format(year_to_down)
-                end_dt = "{0}1231".format(year_to_down)
+                data.to_sql(name='ods_akshare_tool_trade_date_hist_sina', con=engine, if_exists='append', index=False)
+                self.log.info(f"全量下载交易日历{data.shape[0]}条数据数据")
+                return Result(result=True, msg="【全量】日历数据更新完毕")
+
+            if year_to_down:
+                # 仅删除这一年的数据
+                start_dt = f"{year_to_down}0101"
+                end_dt = f"{year_to_down}1231"
                 t_cal = DB_POOL.get("ods_akshare_tool_trade_date_hist_sina")
-                session.query(t_cal).filter(t_cal.c.trade_date >= start_dt).filter(t_cal.c.trade_date <= end_dt).delete()
+                session.query(t_cal).filter(t_cal.c.trade_date >= start_dt).filter(
+                    t_cal.c.trade_date <= end_dt).delete()
                 session.commit()
-                # df = df.astype({'trade_date': str})
-                df = df[(df['trade_date'] >= start_dt) & (df['trade_date'] <= end_dt)]
-            else:
-                # 不更新本地数据
-                df = None
+                data.to_sql(name='ods_akshare_tool_trade_date_hist_sina', con=engine, if_exists='append', index=False)
+                self.log.info(f"全量下载交易日历{data.shape[0]}条数据数据")
+                return Result(result=True, msg="【全量】日历数据更新完毕")
 
-            # 写入数据库
-            if df is not None:
-                df.to_sql(name='ods_akshare_tool_trade_date_hist_sina', con=engine, if_exists='append', index=False)
-                self.log.info("下载交易日历{0}条数据数据".format(df.shape[0]))
-            else:
-                self.log.info("不更新交易日历数据")
-
-            return Result()
+            return tl.Result(result=True, msg="No need to update data")
         except DataException as dwe:
             msg = "Akshare获取数据异常，" + str(dwe)
             self.log.error(msg)
@@ -331,39 +346,8 @@ class Ak_Stock_Cal(AbstractAction):
             self.log.error(msg)
             return tl.Result(result=False, msg=msg)
         finally:
-            session.close()
-
-    def rollback(self) -> bool:
-        """错误发生时，回滚动作函数
-
-        Returns:
-            bool: 回滚操作执行结果
-        """
-        return Result()
-
-
-# 股票清单
-class Ak_Stock_List(AbstractAction):
-    """
-    股票清单
-
-    DOC: https://lxhcvhnie6k.feishu.cn/docx/DrErdGaWBodRRIxFMVYcTB0rnBf#MLO3d1sYCoOzpMxpyXYcLFuJnKd
-    """
-
-    def __init__(self) -> None:
-        self.name = "股票清单"
-        self.gw = get_ak_gateway()  # 数据网关
-        self.DOWNLOAD_ALL = True    # 全量参数
-        super().__init__()
-
-    def check_environment(self) -> bool:
-        """检查环境，检查当前是否可以进行数据下载
-
-        通常子类中会检查需要下载的数据是否已准备好
-        Returns:
-            bool: 检查结果
-        """
-        return Result()
+            if engine:
+                session.close()
 
     def handle(self) -> bool:
         """数据处理函数，子类必须实现
@@ -371,28 +355,131 @@ class Ak_Stock_List(AbstractAction):
         Returns:
             bool: 执行结果
         """
-        # TEST 待测试
-        # 用于单独运行时候
-        if self.log is None:
-            self.log = tl.get_action_logger(action_name=self.name)
-            # self.log = tl.get_logger()
+        self.log.info("Downloading Akshare 新浪交易日历")
 
-        self.log.info("下载 股票交易日历")
+        # 计算所需要的
+        year_to_down = self._get_year_to_down()
+        self.log.debug(f"year_to_down = {year_to_down}")
+
+        try:
+            # 提取数据
+            data = self.extract_data()
+            if data is None:
+                self.log.error("Failed to extract data")
+                return tl.Result(result=False, msg="Failed to extract data")
+            self.log.debug(f"Orginal data = {data.shape}")
+
+            # 转换数据（清洗等）
+            data_transformed = self.transform_data(data, year_to_down)
+            if data_transformed is None:
+                self.log.error("Failed to transform data")
+                return tl.Result(result=False, msg="Failed to transform data")
+            self.log.debug(f"Transformed data = {data_transformed.shape}")
+
+            # 加载数据（存储）
+            result = self.load_data(data_transformed, year_to_down)
+
+            if result and result.result:
+                self.log.info("Akshare 新浪交易日历 Data loaded successfully")
+                return tl.Result(result=True, msg="Akshare 新浪交易日历 下载成功")
+            else:
+                self.log.error("Akshare 新浪交易日历 Data 下载失败！")
+                return tl.Result(result=False, msg=f"Akshare 新浪交易日历 下载失败. {result.msg}")
+        except Exception as e:
+            self.log.exception("An error occurred during data handling")
+            return tl.Result(result=False, msg=f"An error occurred during data handling | {str(e)}")
+
+
+# 下载 上海交易所股票清单 数据 (stock_info_sh_name_code)
+class AkStockInfoShNameCode(AkshareLoadAction):
+
+    def __init__(self) -> None:
+        super().__init__()
+        if not self.name:
+            self.name = "AK | 上海交易所股票清单"
+            self.log = logger.bind(action_name=self.name)   # 参数绑定
+
+    def handle(self) -> tl.Result:
+        """ 下载沪市 """
+        self.log.info("Downloading Akshare stock list | 上海交易所")
+
+        try:
+            # 提取数据
+            data = self.extract_data()
+            if data is None:
+                self.log.error("Failed to extract data")
+                return tl.Result(result=False, msg="Failed to extract data")
+
+            # 转换数据（清洗等）
+            data_transformed = self.transform_data(data)
+            if data_transformed is None:
+                self.log.error("Failed to transform data")
+                return tl.Result(result=False, msg="Failed to transform data")
+
+            # 加载数据（存储）
+            res = self.load_data(data_transformed)
+
+            # 返回一个具体的对象，表示操作成功
+            if res and res.result is True:
+                self.log.info(
+                    "Downloading Akshare stock list | 上海交易所 successfully")
+                return tl.Result(result=True, msg="Downloading Akshare stock list | 上海交易所 successfully")
+            else:
+                return res
+        except Exception as e:
+            self.log.exception("An error occurred during data handling")
+            return tl.Result(result=False, msg=f"An error occurred during data handling | {str(e)}")
+
+    def extract_data(self) -> pd.DataFrame:
+        """ 获取 上海交易所 股票清单原始数据 """
+        board_list = ["主板A股", "主板B股", "科创板"]
+        df_list = []
+        for board in board_list:
+            df = None
+            # 取得数据
+            df = self.gw.call(
+                callback=ak.stock_info_sh_name_code, symbol=board)
+            if df is None:
+                continue
+            # 加入板块字段
+            df["board"] = board
+            df_list.append(df)
+        return pd.concat(df_list)
+
+    def transform_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        """ 清洗 上海交易所 股票清单原始数据 """
+        data = data.astype({'证券代码': str, "上市日期": str})
+        data["上市日期"] = data["上市日期"].apply(tl.d2dbstr)
+
+        data["证券代码"] = data["证券代码"].apply(lambda x: self.gw.symbol_exchange_2_tscode(x, exchange="SH"))
+        COLUMN_NAMES_MAPPING = {
+            '证券代码': 'symbol',
+            '证券简称': 'stock_name',
+            '公司全称': 'total_name',
+            '上市日期': 'ipo_date',
+        }
+        data = data.rename(columns=COLUMN_NAMES_MAPPING)
+        return data
+
+    def load_data(self, data: pd.DataFrame) -> tl.Result:
+        """ 存储 上海交易所 股票清单原始数据 """
+        session = None
         try:
             engine = get_engine()
             Session = sessionmaker(bind=engine)
             session = Session()
 
-            # 刷新sh
-            self.update_sh(engine)
-            # 刷新sz
-            self.update_sz(engine)
-            # 刷新bj
-            self._update_bj(engine)
+            # 删除现有的数据
+            t_ods_akshare_stock_info_sh_name_code = DB_POOL.get(
+                "ods_akshare_stock_info_sh_name_code")
+            session.query(t_ods_akshare_stock_info_sh_name_code).delete()
+            session.commit()
 
-            # TODO 更新汇总清单
+            # 插入数据
+            data.to_sql(name='ods_akshare_stock_info_sh_name_code',
+                        con=engine, if_exists='append', index=False)
 
-            return Result()
+            return Result(True, "")
         except DataException as dwe:
             msg = "Akshare获取数据异常，" + str(dwe)
             self.log.error(msg)
@@ -402,156 +489,285 @@ class Ak_Stock_List(AbstractAction):
             self.log.error(msg)
             return tl.Result(result=False, msg=msg)
         finally:
-            session.close()
+            if session:  # Check if session is defined before closing
+                session.close()
 
-    # 刷新北京交易所数据
-    def _update_bj(self, engine):
-        Session = sessionmaker(engine)
-        session = Session()
 
-        t_sh = DB_POOL.get("ods_akshare_stock_info_bj_name_code")
-        # 清空数据库
-        session.query(t_sh).delete()
-        session.commit()
+# 下载 北京交易所股票清单 数据 (stock_info_bj_name_code)
+class AkStockInfoBjNameCode(AkshareLoadAction):
 
-        # 取得数据
-        df = self.gw.call(callback=ak.stock_info_bj_name_code)
-        # 数据清洗
-        df = df.astype({'证券代码': str, "上市日期": str, "报告日期": str})
-        column_names = {'证券代码': 'symbol',
-                        '证券简称': 'stock_name',
-                        '总股本': 'zgb',
-                        '流通股本': 'ltgb',
-                        '上市日期': 'ipo_date',
-                        '所属行业': 'sshy',
-                        '地区': 'dq',
-                        '报告日期': 'bgrq',
-                        }
-        df["上市日期"] = df["上市日期"].apply(tl.d2dbstr)
-        df["报告日期"] = df["报告日期"].apply(tl.d2dbstr)
-        df["证券代码"] = df["证券代码"].apply(self.gw.symbol_exchange_2_tscode, exchange="BJ")
-        df = df.rename(columns=column_names)
+    def __init__(self) -> None:
+        super().__init__()
+        if not self.name:
+            self.name = "AK | 北京交易所股票清单"
+            self.log = logger.bind(action_name=self.name)   # 参数绑定
+
+    def handle(self) -> tl.Result:
+        """ 下载沪市 """
+        self.log.info("Downloading 北京交易所 股票清单")
+
         try:
-            df["zgb"] = df["zgb"].str.replace(",", "")
-            df["tlgb"] = df["tlgb"].str.replace(",", "")
+            # 提取数据
+            data = self.extract_data()
+            if data is None:
+                self.log.error("Failed to extract data")
+                return tl.Result(result=False, msg="Failed to extract data")
+
+            # 转换数据（清洗等）
+            data_transformed = self.transform_data(data)
+            if data_transformed is None:
+                self.log.error("Failed to transform data")
+                return tl.Result(result=False, msg="Failed to transform data")
+
+            # 加载数据（存储）
+            res = self.load_data(data_transformed)
+
+            # 返回一个具体的对象，表示操作成功
+            if res and res.result is True:
+                self.log.info(
+                    "Downloading 北京交易所 股票清单 successfully")
+                return tl.Result(result=True, msg="Downloading 北京交易所 股票清单 successfully")
+            else:
+                return res
+        except Exception as e:
+            self.log.exception("An error occurred during data handling")
+            return tl.Result(result=False, msg=f"An error occurred during data handling | {str(e)}")
+
+    def extract_data(self) -> pd.DataFrame:
+        """ 获取 北京交易所 股票清单原始数据 """
+        return self.gw.call(callback=ak.stock_info_bj_name_code)
+
+    def transform_data(self, data: pd.DataFrame) -> pd.DataFrame:
+        """ 清洗 北京交易所 股票清单原始数据 """
+        COLUMN_NAMES_MAPPING = {
+            '证券代码': 'symbol',
+            '证券简称': 'stock_name',
+            '总股本': 'zgb',
+            '流通股本': 'ltgb',
+            '上市日期': 'ipo_date',
+            '所属行业': 'sshy',
+            '地区': 'dq',
+            '报告日期': 'bgrq',
+        }
+        data["上市日期"] = data["上市日期"].apply(tl.d2dbstr)
+        data["报告日期"] = data["报告日期"].apply(tl.d2dbstr)
+        data["证券代码"] = data["证券代码"].apply(
+            self.gw.symbol_exchange_2_tscode, exchange="BJ")
+        data = data.rename(columns=COLUMN_NAMES_MAPPING)
+        try:
+            data["zgb"] = data["zgb"].str.replace(",", "")
+            data["tlgb"] = data["tlgb"].str.replace(",", "")
         except Exception:
             pass
-        # print(df)
+        return data
 
-        if df is not None:
-            df.to_sql(name='ods_akshare_stock_info_bj_name_code', con=engine, if_exists='append', index=False)
-            self.log.info("下载北交所股票{0}条数据数据".format(df.shape[0]))
-        session.close()
+    def load_data(self, data: pd.DataFrame) -> tl.Result:
+        """ 存储 北京交易所 股票清单原始数据 """
+        session = None
+        try:
+            engine = get_engine()
+            Session = sessionmaker(bind=engine)
+            session = Session()
 
-    # 刷新上交所数据
-    def update_sh(self, engine):
-        Session = sessionmaker(engine)
-        session = Session()
+            # 删除现有的数据
+            t_ods_akshare_stock_info_bj_name_code = DB_POOL.get(
+                "ods_akshare_stock_info_bj_name_code")
+            session.query(t_ods_akshare_stock_info_bj_name_code).delete()
+            session.commit()
 
-        t_sh = DB_POOL.get("ods_akshare_stock_info_sh_name_code")
-        # 清空数据库
-        session.query(t_sh).delete()
-        session.commit()
+            # 插入数据
+            data.to_sql(name='ods_akshare_stock_info_bj_name_code',
+                        con=engine, if_exists='append', index=False)
 
-        # 轮询下载几个板块
-        board_list = ["主板A股", "主板B股", "科创板"]
-        for board in board_list:
-            # 取得数据
-            df = self.gw.call(callback=ak.stock_info_sh_name_code, symbol=board)
-            # 数据清洗
-            df["board"] = board
-            df = df.astype({'证券代码': str, "上市日期": str})
-            column_names = {'证券代码': 'symbol',
-                            '证券简称': 'stock_name',
-                            '公司全称': 'total_name',
-                            '上市日期': 'ipo_date',
-                            }
-            df["上市日期"] = df["上市日期"].apply(tl.d2dbstr)
-            df["证券代码"] = df["证券代码"].apply(self.gw.symbol_exchange_2_tscode, exchange="SH")
-            df = df.rename(columns=column_names)
-            # print(df)
+            return Result(True, "")
+        except SQLAlchemyError as sqle:
+            msg = "SQL异常" + str(sqle)
+            self.log.error(msg)
+            return tl.Result(result=False, msg=msg)
+        finally:
+            if session:  # Check if session is defined before closing
+                session.close()
 
-            if df is not None:
-                df.to_sql(name='ods_akshare_stock_info_sh_name_code', con=engine, if_exists='append', index=False)
-                self.log.info("下载上交所股票{0}条数据数据 {1}".format(df.shape[0], board))
-        session.close()
 
-    # 刷新深圳交所数据
-    def update_sz(self, engine):
-        Session = sessionmaker(engine)
-        session = Session()
+# 下载 深圳交易所股票清单 数据 (stock_info_bj_name_code)
+class AkStockInfoSzNameCode(AkshareLoadAction):
 
-        t_sz = DB_POOL.get("ods_akshare_stock_info_sz_name_code")
-        # 清空数据库
-        session.query(t_sz).delete()
-        session.commit()
+    def __init__(self) -> None:
+        super().__init__()
+        if not self.name:
+            self.name = "AK | 深圳交易所股票清单"
+            self.log = logger.bind(action_name=self.name)   # 参数绑定
 
-        # 轮询下载几个板块
-        # stock_type_list = ["A股列表", "B股列表", "CDR列表", "AB股列表"]
-        stock_type_list = ["A股列表", "B股列表", "AB股列表"]
-        for stock_type in stock_type_list:
-            # 取得数据
-            df = self.gw.call(callback=ak.stock_info_sz_name_code, symbol=stock_type)
-            # print(df)
-            # 数据清洗
-            df["stock_type"] = stock_type.replace("列表", "")
-            # 根据不同种类，进行分别处理
-            if stock_type in ["A股列表"]:
-                df = df.astype({'A股代码': str, "A股上市日期": str})
-                column_names = {'A股代码': 'symbol',
-                                'A股简称': 'stock_name',
-                                'A股上市日期': 'ipo_date',
-                                'A股总股本': 'zgb',
-                                'A股流通股本': 'tlgb',
-                                '所属行业': 'sshy',
-                                '板块': 'board',
-                                }
-                df = df.rename(columns=column_names)
-            elif stock_type in ["AB股列表"]:
-                df = df[['板块', "A股代码", "A股简称", 'A股上市日期', '所属行业', 'stock_type']]
-                df["zgb"] = "0"
-                df["tlgb"] = "0"
-                df = df.astype({'A股代码': str, "A股上市日期": str})
-                column_names = {'A股代码': 'symbol',
-                                'A股简称': 'stock_name',
-                                'A股上市日期': 'ipo_date',
-                                '所属行业': 'sshy',
-                                '板块': 'board',
-                                }
-                df = df.rename(columns=column_names)
-            elif stock_type in ["B股列表"]:
-                df = df.astype({'B股代码': str, "B股上市日期": str})
-                column_names = {'B股代码': 'symbol',
-                                'B股简称': 'stock_name',
-                                'B股上市日期': 'ipo_date',
-                                'B股总股本': 'zgb',
-                                'B股流通股本': 'tlgb',
-                                '所属行业': 'sshy',
-                                '板块': 'board',
-                                }
-                df = df.rename(columns=column_names)
-            # print(df.head())
-            df["ipo_date"] = df["ipo_date"].apply(tl.d2dbstr)
-            df["symbol"] = df["symbol"].apply(self.gw.symbol_exchange_2_tscode, exchange="SZ")
+    def handle(self) -> tl.Result:
+        self.log.info("Downloading 深圳交易所 股票清单")
+
+        try:
+            # 提取数据
+            df_a = self.get_stock_info_a()
+            df_b = self.get_stock_info_b()
+            df_ab = self.get_stock_info_ab()
+            data_transformed = pd.concat([df_a, df_b, df_ab])
+
+            # 通用字段清洗
+            data_transformed["ipo_date"] = data_transformed["ipo_date"].apply(tl.d2dbstr)   # 日期格式调整
             try:
-                df["zgb"] = df["zgb"].str.replace(",", "")
-                df["tlgb"] = df["tlgb"].str.replace(",", "")
+                # 把千分位号删除
+                data_transformed["zgb"] = data_transformed["zgb"].str.replace(",", "")
+                data_transformed["tlgb"] = data_transformed["tlgb"].str.replace(",", "")
+                data_transformed["symbol"] = pd.Series(data_transformed["symbol"]).apply(
+                    self.gw.symbol_exchange_2_tscode, exchange="SZ")
             except Exception:
                 pass
-            # print(df)
 
-            if df is not None:
-                df.to_sql(name='ods_akshare_stock_info_sz_name_code', con=engine, if_exists='append', index=False)
-                self.log.info("下载 深圳 交易所股票{0}条数据数据 <{1}>".format(df.shape[0], stock_type))
-        session.close()
+            if data_transformed is None:
+                self.log.error("Failed to extract data")
+                return tl.Result(result=False, msg="Failed to extract data")
 
-    def rollback(self) -> bool:
-        """错误发生时，回滚动作函数
+            # data_transformed.to_csv("abc.csv", index=False)
+            print(data_transformed.head(2))
+            # 加载数据（存储）
+            res = self.load_data(data_transformed)
 
-        Returns:
-            bool: 回滚操作执行结果
-        """
-        return Result()
+            # 返回一个具体的对象，表示操作成功
+            if res and res.result is True:
+                self.log.info(
+                    "Downloading 深圳交易所 股票清单 successfully")
+                return tl.Result(result=True, msg="Downloading 深圳交易所 股票清单 successfully")
+            else:
+                return res
+        except Exception as e:
+            self.log.exception("An error occurred during data handling")
+            return tl.Result(result=False, msg=f"An error occurred during data handling | {str(e)}")
+
+    def get_stock_info_a(self) -> pd.DataFrame:
+        """ 下载沪市 """
+        self.log.info("Downloading 深圳交易所（A股） 股票清单")
+        # A股
+        data = self.extract_data_bytype("A股列表")
+        if data is None:
+            self.log.error("Failed to extract data A股")
+            return tl.Result(result=False, msg="Failed to extract data A股")
+        # 转换数据（清洗等）
+        data_transformed = self.transform_data_a(data)
+        if data_transformed is None:
+            self.log.error("Failed to transform data")
+            return tl.Result(result=False, msg="Failed to transform data A股")
+
+        return data_transformed
+
+    def get_stock_info_b(self) -> pd.DataFrame:
+        self.log.info("Downloading 深圳交易所（B股） 股票清单")
+        # B股
+        data = self.extract_data_bytype("B股列表")
+        if data is None:
+            self.log.error("Failed to extract data B股")
+            return tl.Result(result=False, msg="Failed to extract data B股")
+        # 转换数据（清洗等）
+        data_transformed = self.transform_data_b(data)
+        if data_transformed is None:
+            self.log.error("Failed to transform data")
+            return tl.Result(result=False, msg="Failed to transform data B股")
+
+        return data_transformed
+
+    def get_stock_info_ab(self) -> pd.DataFrame:
+        self.log.info("Downloading 深圳交易所（AB股） 股票清单")
+        # B股
+        data = self.extract_data_bytype("AB股列表")
+        if data is None:
+            self.log.error("Failed to extract data AB股")
+            return tl.Result(result=False, msg="Failed to extract data AB股")
+        # 转换数据（清洗等）
+        data_transformed = self.transform_data_ab(data)
+        if data_transformed is None:
+            self.log.error("Failed to transform data")
+            return tl.Result(result=False, msg="Failed to transform data B股")
+
+        return data_transformed
+
+    def extract_data_bytype(self, type: str) -> pd.DataFrame:
+        """ 获取 深圳交易所 股票清单原始数据 """
+        return self.gw.call(callback=ak.stock_info_sz_name_code, symbol=type)
+
+    def transform_data_a(self, data: pd.DataFrame) -> pd.DataFrame:
+        """ 清洗 深圳交易所（A股） 股票清单原始数据 """
+        data["stock_type"] = "A股"
+        data = data.astype({'A股代码': str, "A股上市日期": str})
+        COLUMN_NAMES_MAPPING = {
+            'A股代码': 'symbol',
+            'A股简称': 'stock_name',
+            'A股上市日期': 'ipo_date',
+            'A股总股本': 'zgb',
+            'A股流通股本': 'tlgb',
+            '所属行业': 'sshy',
+            '板块': 'board',
+        }
+        data = data.rename(columns=COLUMN_NAMES_MAPPING)
+        return data
+
+    def transform_data_b(self, data: pd.DataFrame) -> pd.DataFrame:
+        """ 清洗 深圳交易所（B股） 股票清单原始数据 """
+        data["stock_type"] = "B股"
+        data = data.astype({'B股代码': str, "B股上市日期": str})
+        COLUMN_NAMES_MAPPING = {
+            'B股代码': 'symbol',
+            'B股简称': 'stock_name',
+            'B股上市日期': 'ipo_date',
+            'B股总股本': 'zgb',
+            'B股流通股本': 'tlgb',
+            '所属行业': 'sshy',
+            '板块': 'board',
+        }
+        data = data.rename(columns=COLUMN_NAMES_MAPPING)
+        return data
+
+    def transform_data_ab(self, data: pd.DataFrame) -> pd.DataFrame:
+        """ 清洗 深圳交易所（AB股） 股票清单原始数据 """
+        data["stock_type"] = "AB股"
+        data = data[['板块', "A股代码", "A股简称", 'A股上市日期', '所属行业', 'stock_type']]
+
+        data["zgb"] = "0"
+        data["tlgb"] = "0"
+        data = data.astype({'A股代码': str, "A股上市日期": str})
+        COLUMN_NAMES_MAPPING = {
+            'A股代码': 'symbol',
+            'A股简称': 'stock_name',
+            'A股上市日期': 'ipo_date',
+            '所属行业': 'sshy',
+            '板块': 'board',
+        }
+        data = data.rename(columns=COLUMN_NAMES_MAPPING)
+        return data
+
+    def load_data(self, data: pd.DataFrame) -> tl.Result:
+        """ 存储 深圳交易所 股票清单原始数据 """
+        session = None
+        try:
+            engine = get_engine()
+            Session = sessionmaker(bind=engine)
+            session = Session()
+
+            # 删除现有的数据
+            t_ods_akshare_stock_info_bj_name_code = DB_POOL.get(
+                "ods_akshare_stock_info_sz_name_code")
+            session.query(t_ods_akshare_stock_info_bj_name_code).delete()
+            session.commit()
+
+            data.to_sql(name='ods_akshare_stock_info_sz_name_code',
+                        con=engine, if_exists='append', index=False)
+
+            return Result(True, "")
+        except DataException as dwe:
+            msg = "Akshare获取数据异常，" + str(dwe)
+            self.log.error(msg)
+            return tl.Result(result=False, msg=msg)
+        except SQLAlchemyError as sqle:
+            msg = "SQL异常" + str(sqle)
+            self.log.error(msg)
+            return tl.Result(result=False, msg=msg)
+        finally:
+            if session:  # Check if session is defined before closing
+                session.close()
 
 
 # 股票历史数据(东财)
@@ -593,7 +809,7 @@ class AkStockHistoryData(AbstractAction):
     def _query_symol(self):
         """
         从 ods_akshare_stock_list 表查询返回全部股票清单，格式 600016
-        
+
         如果参数中有, 则返回symbol_list参数
         """
         # TODO 待实现
@@ -621,7 +837,6 @@ class AkStockHistoryData(AbstractAction):
                 return tl.Result(result=False, msg=msg)
             finally:
                 session.close()
-        
 
     def handle(self) -> bool:
         """数据处理函数，子类必须实现
@@ -656,22 +871,29 @@ class AkStockHistoryData(AbstractAction):
             for symbol in symbol_list:
                 # 按需要处理的日期数据，分为三种模式进行处理
                 # TODO 按需删除处理
-                self._remove_data(symbol=symbol, trade_date=p_trade_date, start_date=p_start_date, end_date=self.p["end_date"])
+                self._remove_data(symbol=symbol, trade_date=p_trade_date,
+                                  start_date=p_start_date, end_date=self.p["end_date"])
 
                 for period in period_list:
                     for adjust in adjust_list:
                         if p_DOWNLOAD_ALL:
                             # 全量下载
-                            df = ak.stock_zh_a_hist(symbol=symbol, period=period, adjust=adjust)
-                            self.log.debug("下载 {symbol} 全日期 数据 [复权={adjust}, 周期={period}]".format(symbol=symbol, period=period, adjust=adjust))
+                            df = ak.stock_zh_a_hist(
+                                symbol=symbol, period=period, adjust=adjust)
+                            self.log.debug("下载 {symbol} 全日期 数据 [复权={adjust}, 周期={period}]".format(
+                                symbol=symbol, period=period, adjust=adjust))
                         elif self.p["start_date"] and self.p["end_date"]:
                             # 规定起止日期的情况:
-                            df = ak.stock_zh_a_hist(symbol=symbol, period=period, start_date=p_start_date, end_date=p_end_date, adjust=adjust)
-                            self.log.debug("下载 {symbol} 数据 [复权={adjust}, 周期={period}, 日期: {start_date} ~ {end_date}]".format(symbol=symbol, period=period, adjust=adjust, start_date=p_start_date, end_date=p_end_date))
+                            df = ak.stock_zh_a_hist(
+                                symbol=symbol, period=period, start_date=p_start_date, end_date=p_end_date, adjust=adjust)
+                            self.log.debug("下载 {symbol} 数据 [复权={adjust}, 周期={period}, 日期: {start_date} ~ {end_date}]".format(
+                                symbol=symbol, period=period, adjust=adjust, start_date=p_start_date, end_date=p_end_date))
                         else:
                             # 特定日期下载
-                            df = ak.stock_zh_a_hist(symbol=symbol, period=period, start_date=p_trade_date, end_date=p_trade_date, adjust=adjust)
-                            self.log.debug("下载 {symbol} 数据 [复权={adjust}, 周期={period}, 日期: {trade_date}]".format(symbol=symbol, period=period, adjust=adjust, trade_date=p_trade_date))
+                            df = ak.stock_zh_a_hist(
+                                symbol=symbol, period=period, start_date=p_trade_date, end_date=p_trade_date, adjust=adjust)
+                            self.log.debug("下载 {symbol} 数据 [复权={adjust}, 周期={period}, 日期: {trade_date}]".format(
+                                symbol=symbol, period=period, adjust=adjust, trade_date=p_trade_date))
                         # TODO 数据清理
                         df = self._data_clean(df)
                         # TODO 写入数据库
@@ -699,46 +921,3 @@ class AkStockHistoryData(AbstractAction):
             bool: 回滚操作执行结果
         """
         return Result()
-
-
-if __name__ == "__main__":
-    action = Ak_SSE_Summary()
-    res = action.handle()
-    print(res.result)
-
-
-# if __name__ == "__main__":
-#     # 股票存量下载
-#     cfg = ActionConfig()
-#     cfg.p["DOWNLOAD_ALL"] = True
-#     action = AkStockHistoryData()
-#     action.set_action_parameters(cfg)
-#     action.handle()
-
-
-# if __name__ == "__main__":
-    # # ENVIRONMENT = ""
-    # # 
-    # action = Ak_SSE_Summary()
-    # res = action.handle()
-    # print(res.result)
-
-    # # tl.get_action_logger("ABC").info("Action日志")
-
-    # # 下载股票交易日历
-    # action = Ak_Stock_Cal()
-    # res = action.handle()
-    # print(res.result)
-
-    # # 股票清单
-    # action = Ak_Stock_List()
-    # res = action.handle()
-    # print(res.result)
-
-    # stock_type_list = ["A股列表", "B股列表", "CDR列表", "AB股列表"]
-    # gw = get_ak_gateway()
-    # df = gw.call(callback=ak.stock_info_bj_name_code)
-    # print(df.head())
-    # # for type in stock_type_list:
-    # #     df = gw.call(callback=ak.stock_info_sz_name_code, symbol=type)
-    # #     print(df.head(3))

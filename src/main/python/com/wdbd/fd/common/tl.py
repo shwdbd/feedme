@@ -87,21 +87,8 @@ def get_action_logger(action_name: str) -> logging.Logger:
     Returns:
         logging.Logger: _description_
     """
+    # FIXME 待优化，删除此功能
     return get_logger()
-    # if ENVIRONMENT == 'test':
-    #     config_file_path = r"src\\test\\config\\action_log.conf"
-    # else:
-    #     config_file_path = r"src\\main\\config\\action_log.conf"
-
-    # formatter = logging.Formatter('[%(asctime)s][%(levelname)-5s] 【{0}】 %(message)s '.format(action_name), datefmt="%Y-%m-%d %H:%M:%S")
-
-    # logging.config.fileConfig(config_file_path)
-    # # logger_action = logging.getLogger('root')   # 取得根Logger
-    # logger_action = logging.getLogger('fd_action')
-    # for handler in logger_action.handlers:
-    #     print(handler)
-    #     handler.setFormatter(formatter)
-    # return logging.getLogger('fd_action')
 
 
 # 返回特定Group用日志记录器
@@ -134,13 +121,12 @@ def get_cfg(section, key):
         file_path = "src/main/config/fd.cfg"
 
     try:
-        cf = configparser.ConfigParser()
-        cf.read(file_path, encoding="UTF-8")
+        config_parser = configparser.ConfigParser()
+        config_parser.read(file_path, encoding="UTF-8")
 
-        return cf.get(section=section, option=key)
+        return config_parser.get(section=section, option=key)
     except Exception as err:
-        print("读取fd.cfg配置文件出现问题，err={0}".format(err))
-        print("配置文件路径：{0}".format(file_path))
+        print(f"读取{file_path}配置文件出现问题, err={err}")
         return None
 
 
@@ -177,37 +163,21 @@ def d2dbstr(view_str: str) -> str:
     """ 日期视图格式yyyy-MM-dd转数据库格式yyyyMMdd """
     if not view_str:
         return ""
-    dt = datetime.datetime.strptime(view_str, DATE_VIEW_FORMAT)
-    return datetime.datetime.strftime(dt, DATE_FORMAT)
+    try:
+        dt = datetime.datetime.strptime(view_str, DATE_VIEW_FORMAT)
+        return datetime.datetime.strftime(dt, DATE_FORMAT)
+    except ValueError:
+        # 如果输入的字符串不符合 DATE_VIEW_FORMAT 格式，返回原值
+        return view_str
 
 
 def d2viewstr(db_str: str) -> str:
     """ 日期数据库格式yyyyMMdd转视图格式yyyy-MM-dd """
     if not db_str:
         return ""
-    dt = datetime.datetime.strptime(db_str, DATE_FORMAT)
-    return datetime.datetime.strftime(dt, DATE_VIEW_FORMAT)
-
-
-# if __name__ == "__main__":
-#     log_g = get_group_logger("组甲")
-#     log_g.info("组甲 INFO")
-
-#     log_a = get_action_logger("Action 1")
-#     log_a.info("11111111111")
-
-#     # log_g = get_group_logger("组甲")
-#     log_g.info("组甲 INFO")
-
-#     log_a.info("2222222222222")
-
-
-# if __name__ == "__main__":
-#     log = get_logger()
-#     log.info("xxxx")
-
-#     log_s = get_server_logger()
-#     log_s.info("xxxx")
-
-#     log_a = get_action_logger("tushare")
-#     log_a.info("ts test")
+    try:
+        dt = datetime.datetime.strptime(db_str, DATE_FORMAT)
+        return datetime.datetime.strftime(dt, DATE_VIEW_FORMAT)
+    except ValueError:
+        # 如果输入的字符串不符合 格式，返回空字符串或抛出异常，具体取决于业务需求
+        return ""
