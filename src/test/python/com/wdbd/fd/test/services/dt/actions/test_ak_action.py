@@ -1,7 +1,7 @@
 import unittest
 import pandas as pd
 from unittest.mock import patch, MagicMock
-from com.wdbd.fd.services.dt.actions.akshare_action import AkSSESummaryDataDownloader, AkStockInfoShNameCode, AkStockCalDownloader, AkStockInfoBjNameCode, AkStockInfoSzNameCode
+from com.wdbd.fd.services.dt.actions.akshare_action import AkSSESummaryDataDownloader, AkStockInfoShNameCode, AkStockCalDownloader, AkStockInfoBjNameCode, AkStockInfoSzNameCode, AkshareStockList
 from com.wdbd.fd.common.tl import Result
 from com.wdbd.fd.common.db_utils import DbUtils
 import os
@@ -25,7 +25,8 @@ class Test_Ak_SSE_Summary(unittest.TestCase):
         # 检查返回值
         self.assertTrue(isinstance(result, Result))
         self.assertTrue(result.result)
-        self.assertEqual(result.msg, "Downloading Akshare market overview | SSE summary data successfully")
+        self.assertEqual(
+            result.msg, "Downloading Akshare market overview | SSE summary data successfully")
         # TODO 引入Mock，并检查数据库表数据是否正确
 
     @patch('akshare.stock_sse_summary')
@@ -81,7 +82,8 @@ class Test_Ak_SSE_Summary(unittest.TestCase):
         assert isinstance(transformed_data, pd.DataFrame)
 
         # 检查列名是否匹配
-        expected_columns = ['market', 'ltgb', 'zsz', 'pjsyl', 'ssgs', 'ssgp', 'tlsz', 'zgb', 'trade_date']
+        expected_columns = ['market', 'ltgb', 'zsz', 'pjsyl',
+                            'ssgs', 'ssgp', 'tlsz', 'zgb', 'trade_date']
         assert list(transformed_data.columns) == expected_columns
 
         # 检查数据行数
@@ -156,7 +158,8 @@ class Test_Ak_Stock_Cal(unittest.TestCase):
     #     return super().tearDown()
 
     def setUp(self) -> None:
-        DbUtils.clear_table_data(table_name="ods_akshare_tool_trade_date_hist_sina")
+        DbUtils.clear_table_data(
+            table_name="ods_akshare_tool_trade_date_hist_sina")
         return super().setUp()
 
     def test_handle_downloadall(self):
@@ -177,7 +180,8 @@ class Test_Ak_Stock_Cal(unittest.TestCase):
         self.assertTrue(result.result)
         self.assertEqual(result.msg, "Akshare 新浪交易日历 下载成功")
         # 数据库结果检查
-        self.assertEqual(2, DbUtils.count(table_name="ods_akshare_tool_trade_date_hist_sina"))
+        self.assertEqual(2, DbUtils.count(
+            table_name="ods_akshare_tool_trade_date_hist_sina"))
 
 
 # 测试 下载上海交易所股票代码清单
@@ -218,12 +222,15 @@ class Test_AkStockInfoShNameCode(unittest.TestCase):
         # 结果监测
         self.assertTrue(isinstance(result, Result))
         self.assertTrue(result.result)
-        self.assertEqual(result.msg, "Downloading Akshare stock list | 上海交易所 successfully")
-        self.assertEqual(6, DbUtils.count(table_name="ods_akshare_stock_info_sh_name_code"))
+        self.assertEqual(
+            result.msg, "Downloading Akshare stock list | 上海交易所 successfully")
+        self.assertEqual(6, DbUtils.count(
+            table_name="ods_akshare_stock_info_sh_name_code"))
 
     def test_extract_data(self):
         # 在这里，我们假设gw是一个已经实例化的对象，并且有一个call方法
-        mock_file_path = os.path.join(self.mock_file_dir, "akshare_stock_list_sh.csv")
+        mock_file_path = os.path.join(
+            self.mock_file_dir, "akshare_stock_list_sh.csv")
         mock_df = pd.read_csv(filepath_or_buffer=mock_file_path)
         gw_mock = MagicMock()
         # 设置网关 gw.call 的返回值
@@ -239,7 +246,8 @@ class Test_AkStockInfoShNameCode(unittest.TestCase):
         self.assertTrue(isinstance(result, pd.DataFrame))
         self.assertEqual(result.shape[1], mock_df.shape[1])
         self.assertEqual(result.shape[0], mock_df.shape[0]*3)
-        self.assertEqual(result.columns.tolist(), ['证券代码', '证券简称', '公司全称', '上市日期', 'board'])
+        self.assertEqual(result.columns.tolist(), [
+                         '证券代码', '证券简称', '公司全称', '上市日期', 'board'])
         # 验证gw.call方法被调用了3次
         self.assertEqual(gw_mock.call_count, 3)
 
@@ -264,7 +272,8 @@ class Test_AkStockInfoShNameCode(unittest.TestCase):
         data_transformed = action.transform_data(raw_data)
         self.assertTrue(isinstance(data_transformed, pd.DataFrame))
         self.assertEqual(data_transformed.shape, expected_data.shape)
-        self.assertEqual(data_transformed.columns.tolist(), expected_data.columns.tolist())
+        self.assertEqual(data_transformed.columns.tolist(),
+                         expected_data.columns.tolist())
 
 
 # 测试 下载北京交易所股票代码清单
@@ -294,7 +303,8 @@ class Test_AkStockInfoBjNameCode(unittest.TestCase):
         self.assertTrue(isinstance(result, Result))
         self.assertTrue(result.result)
         self.assertEqual(result.msg, "Downloading 北京交易所 股票清单 successfully")
-        self.assertEqual(2, DbUtils.count(table_name="ods_akshare_stock_info_bj_name_code"))
+        self.assertEqual(2, DbUtils.count(
+            table_name="ods_akshare_stock_info_bj_name_code"))
 
 
 # 测试 下载深圳交易所股票代码清单
@@ -324,6 +334,38 @@ class Test_AkStockInfoSzNameCode(unittest.TestCase):
         self.assertTrue(isinstance(result, Result))
         self.assertTrue(result.result)
         self.assertEqual(result.msg, "Downloading 深圳交易所 股票清单 successfully")
-        self.assertTrue(DbUtils.count(table_name="ods_akshare_stock_info_sz_name_code") > 1000)
+        self.assertTrue(DbUtils.count(
+            table_name="ods_akshare_stock_info_sz_name_code") > 1000)
         # self.assertEqual(2, DbUtils.count(table_name="ods_akshare_stock_info_bj_name_code"))
         # TODO 需要使用Mock进行测试
+
+
+class Test_AkshareStockList(unittest.TestCase):
+
+    def test_handle(self):
+        # mock_df = pd.DataFrame({
+        #     "证券代码": [600000, 600004],
+        #     "证券简称": ['浦发银行', '白云机场'],
+        #     "总股本": [12345, 67890],
+        #     "流通股本": [12345, 67890],
+        #     "上市日期": ['1999-11-10', '2003-04-28'],
+        #     "所属行业": ['A 工业', 'B 农业'],
+        #     "地区": ['A ASH', 'B 广西'],
+        #     "报告日期": ['2022-06-30', '2003-04-28']
+        # })
+        # gw_mock = MagicMock()
+        # # 设置网关 gw.call 的返回值
+        # gw_mock.return_value = mock_df
+
+        # 执行
+        action = AkshareStockList()
+        result = action.handle()
+
+        # 结果监测
+        self.assertTrue(isinstance(result, Result))
+        self.assertTrue(result.result)
+        count_stock_list = DbUtils.count(table_name="ods_akshare_stock_info_sh_name_code") + \
+            DbUtils.count(table_name="ods_akshare_stock_info_bj_name_code") + \
+            DbUtils.count(table_name="ods_akshare_stock_info_sz_name_code", sql_where_str="stock_type<>'AB股'")
+        self.assertEqual(result.msg, f"A股股票清单合并完成，共计{count_stock_list}支股票")
+        # TODO 使用Mock数据库对象进行测试

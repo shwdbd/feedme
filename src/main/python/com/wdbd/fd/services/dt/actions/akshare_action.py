@@ -15,9 +15,11 @@ import akshare as ak
 from com.wdbd.fd.model.db import get_engine, table_objects_pool as DB_POOL
 from sqlalchemy.orm import sessionmaker
 import com.wdbd.fd.common.tl as tl
+from com.wdbd.fd.common.db_utils import DbUtils
 from sqlalchemy.exc import SQLAlchemyError as SQLAlchemyError
 from loguru import logger
 import pandas as pd
+from sqlalchemy import text
 
 
 # 基类
@@ -539,6 +541,7 @@ class AkStockInfoBjNameCode(AkshareLoadAction):
 
     def transform_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """ 清洗 北京交易所 股票清单原始数据 """
+        data = data.astype({'上市日期': str, "报告日期": str, "证券代码": str}) 
         COLUMN_NAMES_MAPPING = {
             '证券代码': 'symbol',
             '证券简称': 'stock_name',
@@ -624,7 +627,7 @@ class AkStockInfoSzNameCode(AkshareLoadAction):
                 return tl.Result(result=False, msg="Failed to extract data")
 
             # data_transformed.to_csv("abc.csv", index=False)
-            print(data_transformed.head(2))
+            # print(data_transformed.head(2))
             # 加载数据（存储）
             res = self.load_data(data_transformed)
 
@@ -770,8 +773,48 @@ class AkStockInfoSzNameCode(AkshareLoadAction):
                 session.close()
 
 
+class AkshareStockList(AkshareLoadAction):
+    """ 根据三个交易所股票清单生成汇总股票清单表 """
+
+    def handle(self) -> tl.Result:
+        """ 合并股票清单列表 """
+        session = None
+        try:
+            engine = get_engine()
+            Session = sessionmaker(bind=engine)
+            session = Session()
+
+            with engine.connect() as connection:
+                trans = connection.begin()
+                connection.execute(text("delete from ods_akshare_stock_list"))
+                connection.execute(text("insert into ods_akshare_stock_list select symbol,'SH',board from ods_akshare_stock_info_sh_name_code"))
+                connection.execute(text("insert into ods_akshare_stock_list select symbol,'SZ',board from ods_akshare_stock_info_sz_name_code where stock_type<>'AB股'"))
+                connection.execute(text("insert into ods_akshare_stock_list select symbol,'BJ','' from ods_akshare_stock_info_bj_name_code"))
+                trans.commit()
+
+            # 提交更改
+            session.commit()
+
+            count_of_stock = DbUtils.count(table_name="ods_akshare_stock_list")
+            msg = f"A股股票清单合并完成，共计{count_of_stock}支股票"
+
+            self.log.info(msg)
+            return Result(True, msg)
+        except (DataException, SQLAlchemyError) as e:
+            msg = "Akshare获取数据异常，" + str(e)
+            self.log.error(msg)
+            return tl.Result(result=False, msg=msg)
+        except Exception as e:
+            msg = "异常" + str(e)
+            self.log.error(msg)
+            return tl.Result(result=False, msg=msg)
+        finally:
+            if session:  # Check if session is defined before closing
+                session.close()
+
+
 # 股票历史数据(东财)
-class AkStockHistoryData(AbstractAction):
+class AkStockHistoryData(AkshareLoadAction):
     """
     股票历史数据(东财)
 
@@ -780,10 +823,13 @@ class AkStockHistoryData(AbstractAction):
     实现需求：
     1. 存放包括 各交易所、各周期、各复权模式的数据
     2. 日期格式:yyyyMMdd, 股票代码:600016
-    3. 股票清单从: ods_akshare_stock_list 表获取
+    3. 股票清单从: ods_akshare_stock_list 表获取, 或从参数中传入 symbol_list
     4. 采用覆盖式更新数据
 
-    p中的参数：
+    按股票，逐一获取数据，并存储到数据库中
+
+
+    p中的参数:
     - DOWNLOAD_ALL: bool [defualt: false]   是否全量下载
     - trade_date: str [default: None]       指定日期下载
     - start_date: str [default: None]       指定日期段下载,开始日期
@@ -792,117 +838,174 @@ class AkStockHistoryData(AbstractAction):
     """
 
     def __init__(self) -> None:
-        self.name = "交易日历"
-        self.gw = get_ak_gateway()  # 数据网关
-        # 初始化Action日志
-        self.__init_log()
         super().__init__()
-
-    def __init_log():
-        # 初始化Action日志
-        pass
-
-    def check_environment(self) -> bool:
-        return Result()
+        self.gw = get_ak_gateway()
+        if not self.name:
+            self.name = "AK | 股票历史日线数据(东财)"
+            self.log = logger.bind(action_name=self.name)   # 参数绑定
+        # adjust_list = ['none', 'qfq', 'hfq']    # 复权模式
+        # period_list = ['daily', 'weekly', 'monthly']    # 数据周期
 
     # 获取全部股票代码
-    def _query_symol(self):
+    def _query_symbol(self, stock_id_list: list = None):
         """
-        从 ods_akshare_stock_list 表查询返回全部股票清单，格式 600016
+        从 ods_akshare_stock_list 表查询返回全部股票清单，返回格式 600016
 
-        如果参数中有, 则返回symbol_list参数
+        如果参数中有股票清单, 则返回symbol_list参数
         """
-        # TODO 待实现
-        if self.p.get("symbol_list", None) is not None:
-            return self.p.get("symbol_list")
-        else:
-            # 从数据库表中查询
-            try:
-                engine = get_engine()
-                Session = sessionmaker(bind=engine)
-                session = Session()
+        gw = get_ak_gateway()
+        if stock_id_list is not None:
+            return [gw.tscode_2_symbol(stockid) for stockid in stock_id_list]
 
+        # 从数据库表中查询
+        try:
+            engine = get_engine()
+            Session = sessionmaker(bind=engine)
+
+            with Session() as session:
                 t_stock = DB_POOL.get("ods_akshare_stock_list")
                 records = session.query(t_stock).all()
-                print(records)
 
-                return []
-            except DataException as dwe:
-                msg = "Akshare获取数据异常，" + str(dwe)
-                self.log.error(msg)
-                return tl.Result(result=False, msg=msg)
-            except SQLAlchemyError as sqle:
-                msg = "SQL异常" + str(sqle)
-                self.log.error(msg)
-                return tl.Result(result=False, msg=msg)
-            finally:
-                session.close()
+                # 假设 t_stock 对象有一个名为 "symbol" 的字段来存储股票代码
+                symbol_list = [gw.tscode_2_symbol(record.stock_id) for record in records]
 
-    def handle(self) -> bool:
-        """数据处理函数，子类必须实现
+                return symbol_list
+        except DataException as dwe:
+            msg = "Akshare获取数据异常，" + str(dwe)
+            self.log.error(msg)
+            return None
+        except SQLAlchemyError as sqle:
+            msg = "SQL异常" + str(sqle)
+            self.log.error(msg)
+            return None
 
-        Returns:
-            bool: 执行结果
+    def _print_p(self):
+        """ 参数打印 """
+        self.log.debug("-"*20)
+        for p_name in self.p.keys():
+            self.log.debug(f"{p_name} = {self.p.get(p_name)}")
+        self.log.debug("-"*20)
+
+    def extract_data(self, symbol: str) -> pd.DataFrame:
+        """ 获取单个股票的数据 """
+        data_list = []
+        try:
+            # 按不同时间线下载
+            for period in self.p.get("period_list", ["daily"]):
+                # 按不同复权模式下载
+                for adjust_mode in self.p.get("adjust_list", [""]):
+                    # 全量下载
+                    if self.p.get("DOWNLOAD_ALL", False):
+                        df = self.gw.call(callback=ak.stock_zh_a_hist, symbol=symbol, period=period, adjust=adjust_mode)
+                    # 指定日期
+                    elif self.p.get("trade_date", None):
+                        df = self.gw.call(callback=ak.stock_zh_a_hist, symbol=symbol, period=period, start_date=self.p.get("trade_date"), end_date=self.p.get("trade_date"), adjust=adjust_mode)
+                    # 指定日期段
+                    elif self.p.get("start_date", None):
+                        df = self.gw.call(callback=ak.stock_zh_a_hist, symbol=symbol, period=period, start_date=self.p.get("start_date"), end_date=self.p.get("end_date"), adjust=adjust_mode)
+                    else:
+                        self.log.error("未知时间模式")
+                        return None
+                    # 打标签
+                    df["数据周期"] = period
+                    df["复权模式"] = adjust_mode
+                    data_list.append(df)
+        except DataException as der:
+            self.log.error(f"读取Aksahre失败，{str(der)}")
+            return None
+
+        if len(data_list) == 0:
+            return None
+        else:
+            return pd.concat(data_list)
+
+    def transform(self, data: str, symbol: str) -> pd.DataFrame:
+        """ 数据清洗 """
+        if data is None:
+            return None
+        if data.empty:
+            return data
+
+        try:
+            # 替换 未复权
+            mapping_adjust = {'': '不复权', 'qfq': '前复权', 'hfq': '后复权'}
+            data['复权模式'] = data['复权模式'].map(mapping_adjust)
+
+            # 字段整理
+            data["证券代码"] = symbol
+            data = data.astype({'日期': str, "证券代码": str})
+            data["日期"] = data["日期"].apply(tl.d2dbstr)
+            # 字段名更新
+            data["证券代码"] = data["证券代码"].apply(lambda x: self.gw.symbol_exchange_2_tscode(x, exchange=self.gw.judge_stock_exchange(x)[0]))
+            COLUMN_NAMES_MAPPING = {
+                '证券代码': 'symbol',
+                '日期': 'trade_date',
+                '开盘': 'p_open',
+                '收盘': 'p_close',
+                '最高': 'p_high',
+                '最低': 'p_low',
+                '成交量': 'volume',
+                '成交额': 'amount',
+                '振幅': 'volatility',
+                '涨跌幅': 'price_chg',
+                '涨跌额': 'price_chg_amt',
+                '换手率': 'turnover',
+                '数据周期': 'period',
+                '复权模式': 'adjust'
+            }
+            data = data.rename(columns=COLUMN_NAMES_MAPPING)
+            return data
+        except Exception:
+            self.log.error(data)
+            raise
+
+    def save_to_db(self, stock_id, data: pd.DataFrame) -> tl.Result:
         """
-        if self.log is None:
-            self.log = tl.get_action_logger(action_name=self.name)
-            # self.log = tl.get_logger()
+        将获取到的股票数据保存到数据库中
+        Args:
+            stock_id (str): 股票代码, 600016格式
+            data (pd.DataFrame): 获取到的股票数据
+        Returns:
+            tl.Result: 操作结果
+        """
+        if data is None or data.empty:
+            self.log.warning(f"{stock_id} 数据为空")
+            return tl.Result(result=True, msg="数据为空")
 
-        # 参数
-        adjust_list = ['none', 'qfq', 'hfq']    # 复权模式
-        period_list = ['daily', 'weekly', 'monthly']    # 数据周期
-
-        self.log.info("下载股票存量数据 [数据源：东财]")
-        p_DOWNLOAD_ALL = self.p.get("DOWNLOAD_ALL", False)
-        p_trade_date = self.p.get("trade_date", None)
-        p_start_date = self.p.get("start_date", None)
-        p_end_date = self.p.get("end_date", None)
-        self.log.debug("DOWNLOAD_ALL= {0}".format(p_DOWNLOAD_ALL))
-        self.log.debug("trade_date= {0}".format(p_trade_date))
-        self.log.debug("start_date= {0}".format(p_start_date))
-        self.log.debug("end_date= {0}".format(p_end_date))
-
+        ts_code = self.gw.symbol_exchange_2_tscode(stock_id, exchange=self.gw.judge_stock_exchange(stock_id)[0])
+        session = None
         try:
             engine = get_engine()
             Session = sessionmaker(bind=engine)
             session = Session()
 
-            symbol_list = self._query_symol()   # TODO 获取全部股票代码
-            for symbol in symbol_list:
-                # 按需要处理的日期数据，分为三种模式进行处理
-                # TODO 按需删除处理
-                self._remove_data(symbol=symbol, trade_date=p_trade_date,
-                                  start_date=p_start_date, end_date=self.p["end_date"])
+            # 删除现有的数据
+            t_ods_akshare_stock_zh_a_hist = DB_POOL.get(
+                "ods_akshare_stock_zh_a_hist")
+            stmt = session.query(t_ods_akshare_stock_zh_a_hist).filter(
+                t_ods_akshare_stock_zh_a_hist.c.symbol == ts_code)
 
-                for period in period_list:
-                    for adjust in adjust_list:
-                        if p_DOWNLOAD_ALL:
-                            # 全量下载
-                            df = ak.stock_zh_a_hist(
-                                symbol=symbol, period=period, adjust=adjust)
-                            self.log.debug("下载 {symbol} 全日期 数据 [复权={adjust}, 周期={period}]".format(
-                                symbol=symbol, period=period, adjust=adjust))
-                        elif self.p["start_date"] and self.p["end_date"]:
-                            # 规定起止日期的情况:
-                            df = ak.stock_zh_a_hist(
-                                symbol=symbol, period=period, start_date=p_start_date, end_date=p_end_date, adjust=adjust)
-                            self.log.debug("下载 {symbol} 数据 [复权={adjust}, 周期={period}, 日期: {start_date} ~ {end_date}]".format(
-                                symbol=symbol, period=period, adjust=adjust, start_date=p_start_date, end_date=p_end_date))
-                        else:
-                            # 特定日期下载
-                            df = ak.stock_zh_a_hist(
-                                symbol=symbol, period=period, start_date=p_trade_date, end_date=p_trade_date, adjust=adjust)
-                            self.log.debug("下载 {symbol} 数据 [复权={adjust}, 周期={period}, 日期: {trade_date}]".format(
-                                symbol=symbol, period=period, adjust=adjust, trade_date=p_trade_date))
-                        # TODO 数据清理
-                        df = self._data_clean(df)
-                        # TODO 写入数据库
-                        self._save_to_db(df)
-                self.log.debug("股票{symbol} 完成 ... ".format(symbol=symbol))
+            if self.p.get("DOWNLOAD_ALL", False):
+                pass
+            # 指定日期
+            elif self.p.get("trade_date", None):
+                stmt = stmt.filter(t_ods_akshare_stock_zh_a_hist.c.trade_date == self.p.get("trade_date"))
+            # 指定日期段
+            elif self.p.get("start_date", None):
+                stmt = stmt.filter(t_ods_akshare_stock_zh_a_hist.c.trade_date >= self.p.get("start_date"))
+                stmt = stmt.filter(t_ods_akshare_stock_zh_a_hist.c.trade_date <= self.p.get("end_date"))
+            else:
+                self.log.error("未知时间模式")
+                return None
 
-            self.log.info("股票历史数据全部下载完成")
+            stmt.delete()
+            session.commit()
 
-            return Result()
+            # 插入数据
+            data.to_sql(name='ods_akshare_stock_zh_a_hist',
+                        con=engine, if_exists='append', index=False)
+
+            return Result(True, "")
         except DataException as dwe:
             msg = "Akshare获取数据异常，" + str(dwe)
             self.log.error(msg)
@@ -912,12 +1015,36 @@ class AkStockHistoryData(AbstractAction):
             self.log.error(msg)
             return tl.Result(result=False, msg=msg)
         finally:
-            session.close()
+            if session:  # Check if session is defined before closing
+                session.close()
 
-    def rollback(self) -> bool:
-        """错误发生时，回滚动作函数
-
-        Returns:
-            bool: 回滚操作执行结果
+    def handle(self) -> bool:
         """
-        return Result()
+        获取股票历史数据
+
+        根据股票清单，逐一股票获取数据（获取并存储）
+        """
+        # 参数
+        self.log.info("下载股票存量数据 [数据源：东财]")
+        self.p["adjust_list"] = ['', 'qfq', 'hfq']    # 复权模式
+        # self.p["period_list"] = ['daily', 'weekly', 'monthly']    # 数据周期
+        self.p["period_list"] = ['daily']    # 数据周期
+        self._print_p()
+
+        # 待下载的股票代码
+        symbol_list = self._query_symbol(self.p.get("symbol_list"))
+        self.log.info(f"拟下载{len(symbol_list)}支股票")
+        for idx, symbol in enumerate(symbol_list, start=1):
+            self.log.info(f"[{idx} / {len(symbol_list)}] {symbol} : ")
+            data = self.extract_data(symbol=symbol)
+            # self.log.info(data)
+            transformed_data = self.transform(data, symbol)
+            # self.log.info(transformed_data)
+            result = self.save_to_db(symbol, transformed_data)
+            if not result or not result.result:
+                msg = f"{symbol} 下载失败 "
+                self.log.error(msg)
+                return tl.Result(result=False, msg=msg)
+        self.log.info("全部下载完毕")
+
+        return tl.Result(result=True, msg="全部股票日线数据下载完毕")

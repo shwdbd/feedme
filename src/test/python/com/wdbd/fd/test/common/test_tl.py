@@ -32,7 +32,7 @@ class TestTL_D2DBStr(unittest.TestCase):
     def test_invalid_date(self):
         # 测试无效的日期字符串
         view_str = "2023-13-32"
-        expected_result = ""
+        expected_result = view_str  # 错误则返回原值
         result = tl.d2dbstr(view_str)
         self.assertEqual(result, expected_result)
 

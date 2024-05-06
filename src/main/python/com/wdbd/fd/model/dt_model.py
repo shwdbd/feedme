@@ -198,6 +198,7 @@ class AbstractAction(ABC):
 
     def init_action_logger(self, name):
         """ 初始化Action日志 """
+        # TODO 此处参数，需要迁移到配置文件中处理
         global HAS_ACTION_LOGGER
         if HAS_ACTION_LOGGER is None:
             logger.remove()

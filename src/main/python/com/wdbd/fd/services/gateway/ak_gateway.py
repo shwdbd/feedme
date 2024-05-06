@@ -22,7 +22,6 @@ class AkshareGateWayError(Exception):
     def __init__(self, message="Akshare 网关错误", code=0, *args, **kwargs):
         """
         初始化异常类实例
-        
         Args:
             message (str, optional): 异常信息. 默认为 "Akshare 网关错误".
             code (int, optional): 异常码. 默认为 0.
@@ -39,7 +38,7 @@ class AkshareGateWayError(Exception):
         返回异常信息的字符串表示形式，格式为：异常信息（错误码：错误码值）。
 
         Args:
-            无 
+            无
         Returns:
             str: 异常信息的字符串表示形式，格式为：异常信息（错误码：错误码值）。
         """
@@ -129,7 +128,7 @@ class AkshareGateWay(AbstarctAkshareGateWay):
             df = callback(*args, **kargs)
             # 登记API日志
             # 入参控制，日期型号，统一成 yyyy-MM-dd
-            self.gw_logger.info("接口={api_name}, 参数[{p}], 结果= SUCCESS".format(api_name=callback.__name__, p=str(kargs)))
+            self.gw_logger.debug("接口={api_name}, 参数[{p}], 结果= SUCCESS".format(api_name=callback.__name__, p=str(kargs)))
             # 数据清洗(无)
             return df
         except Exception as err:
@@ -166,14 +165,26 @@ class AkshareGateWay(AbstarctAkshareGateWay):
 
     def symbol_exchange_2_tscode(self, symbol, exchange) -> str:
         """ 600016 变为 600016.SH """
+        # try:
+        #     if not symbol.isdigit() or len(symbol) != 6:
+        #         return symbol
+        #     if not exchange.isalpha() or len(exchange) != 2:
+        #         return symbol
+        #     return f"{symbol}.{exchange}"
+        # except Exception:
+        #     return symbol
+        return f"{symbol}.{exchange}"
+
+    def tscode_2_symbol(self, tscode: str) -> str:
+        """ 600016.SH 变为 600016 """
         try:
-            if not symbol.isdigit() or len(symbol) != 6:
-                return symbol
-            if not exchange.isalpha() or len(exchange) != 2:
-                return symbol
-            return f"{symbol}.{exchange}"
+            if not tscode or len(tscode) < 9:
+                return tscode
+            else:
+                return tscode[:6]
         except Exception:
-            return symbol
+            print("err")
+            return tscode
 
     # 加载专用日志管理器
     def _init_log_gw(self):
@@ -241,4 +252,3 @@ class AkshareGateWay(AbstarctAkshareGateWay):
 
         return exchange, board
 
-    

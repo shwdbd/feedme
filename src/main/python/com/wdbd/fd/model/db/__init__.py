@@ -17,6 +17,7 @@ tables = [
     "ods_akshare_stock_info_sh_name_code",
     "ods_akshare_stock_info_sz_name_code",
     "ods_akshare_stock_info_bj_name_code",
+    "ods_akshare_stock_zh_a_hist",
 ]
 
 # 表对象池

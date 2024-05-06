@@ -169,6 +169,9 @@ def d2dbstr(view_str: str) -> str:
     except ValueError:
         # 如果输入的字符串不符合 DATE_VIEW_FORMAT 格式，返回原值
         return view_str
+    except Exception as e:
+        print(f"日期格式转换错误， {view_str},  {e}")
+        return view_str
 
 
 def d2viewstr(db_str: str) -> str:
