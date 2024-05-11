@@ -11,7 +11,7 @@
 import unittest
 import os
 from pathlib import Path
-import com.wdbd.fd.common.tl as tl
+from com.wdbd.fd.common import tl
 
 
 class TestTLD2DBStr(unittest.TestCase):

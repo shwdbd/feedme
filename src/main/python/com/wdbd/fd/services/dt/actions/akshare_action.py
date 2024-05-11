@@ -776,6 +776,12 @@ class AkStockInfoSzNameCode(AkshareLoadAction):
 class AkshareStockList(AkshareLoadAction):
     """ 根据三个交易所股票清单生成汇总股票清单表 """
 
+    def __init__(self) -> None:
+        super().__init__()
+        if not self.name:
+            self.name = "AK | 合并股票清单"
+            self.log = logger.bind(action_name=self.name)   # 参数绑定
+
     def handle(self) -> tl.Result:
         """ 合并股票清单列表 """
         session = None
@@ -800,12 +806,12 @@ class AkshareStockList(AkshareLoadAction):
 
             self.log.info(msg)
             return Result(True, msg)
-        except (DataException, SQLAlchemyError) as e:
-            msg = "Akshare获取数据异常，" + str(e)
+        except (DataException, SQLAlchemyError) as dse:
+            msg = "Akshare获取数据异常，" + str(dse)
             self.log.error(msg)
             return tl.Result(result=False, msg=msg)
-        except Exception as e:
-            msg = "异常" + str(e)
+        except Exception as err:
+            msg = "异常" + str(err)
             self.log.error(msg)
             return tl.Result(result=False, msg=msg)
         finally:

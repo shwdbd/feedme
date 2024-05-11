@@ -18,15 +18,15 @@ from com.wdbd.fd.services.gateway import DataException
 
 
 class TestAKGateway(unittest.TestCase):
-    """ 测试Akshare书记员网关 """
+    """ 测试Akshare网关 """
 
     def test_get_ak_gateway(self):
         """ 测试取得网关对象 """
-        gw = get_ak_gateway()
-        self.assertIsInstance(gw, AkshareGateWay)
+        ak_gw = get_ak_gateway()
+        self.assertIsInstance(ak_gw, AkshareGateWay)
 
     def test_call(self):
-        """ 测试调取数据源API功能 """        
+        """ 测试调取数据源API功能 """
         # 使用Mock对象模拟get_ak_gateway函数
         def mock_get_ak_gateway():
             mock_gw = Mock(spec=AkshareGateWay)
@@ -41,27 +41,28 @@ class TestAKGateway(unittest.TestCase):
             return mock_gw
 
         # 在测试期间替换实际的get_ak_gateway函数
-        with patch('com.wdbd.fd.services.gateway.ak_gateway.get_ak_gateway', mock_get_ak_gateway):  # 需要导入patch
-            gw = get_ak_gateway()
-            self.assertIsInstance(gw, AkshareGateWay)
+        with patch('com.wdbd.fd.services.gateway.ak_gateway.get_ak_gateway', mock_get_ak_gateway):
+            ak_gw = get_ak_gateway()
+            self.assertIsInstance(ak_gw, AkshareGateWay)
 
             # 调用
-            df = gw.call(callback=ak.stock_sse_summary)
-            self.assertIsNotNone(df)
-            self.assertListEqual(['项目', '股票', '主板', '科创板'], df.columns.tolist())
+            ak_df = ak_gw.call(callback=ak.stock_sse_summary)
+            self.assertIsNotNone(ak_df)
+            self.assertListEqual(['项目', '股票', '主板', '科创板'],
+                                 ak_df.columns.tolist())
 
             # 测试, 使用 600016.SH 样式
-            df = gw.call(callback=ak.stock_zh_a_hist
-                        , symbol="600016.SH", start_date="20240225", end_date="20240228")
-            self.assertIsNotNone(df)
+            ak_df = ak_gw.call(callback=ak.stock_zh_a_hist, symbol="600016.SH",
+                               start_date="20240225", end_date="20240228")
+            self.assertIsNotNone(ak_df)
 
             # 测试, api调用失败的情况
             try:
-                df = gw.call(callback=ak.stock_zh_a_hist
-                            , symbol="aaaaaaa", start_date="20240225", end_date="20240228")
+                ak_df = ak_gw.call(callback=ak.stock_zh_a_hist, symbol="aaaaaaa",
+                                   start_date="20240225", end_date="20240228")
                 self.fail("Expected an DataException to be raised")
-            except DataException as de:
-                self.assertIsInstance(de, DataException)
+            except DataException as de_err:
+                self.assertIsInstance(de_err, DataException)
 
     def test_check_connection_success(self):
         """ 模拟网络请求成功 """
@@ -70,23 +71,23 @@ class TestAKGateway(unittest.TestCase):
             mock_response.status_code = 200
             mock_get.return_value = mock_response
 
-            gw = AkshareGateWay()
-            assert gw.check_connection() is True
+            ak_gw = AkshareGateWay()
+            assert ak_gw.check_connection() is True
 
     def test_check_connection_failure(self):
         """ 模拟网络请求失败 """
         with patch('com.wdbd.fd.services.gateway.ak_gateway.requests.get') as mock_get:
             mock_get.side_effect = requests.exceptions.RequestException()
 
-            gw = AkshareGateWay()
-            assert gw.check_connection() is False
+            ak_gw = AkshareGateWay()
+            assert ak_gw.check_connection() is False
 
     def test_check_connection_timeout(self):
         """ 模拟网络请求超时 """
         with patch('com.wdbd.fd.services.gateway.ak_gateway.requests.get') as mock_get:
             mock_get.side_effect = socket.timeout()
-            gw = AkshareGateWay()
-            assert gw.check_connection() is False
+            ak_gw = AkshareGateWay()
+            assert ak_gw.check_connection() is False
 
     def test_symbol_exchange_2_tscode(self):
         """ 测试symbol_exchange_2_tscode方法 """
@@ -154,66 +155,72 @@ class TestAKGatewayStandardize(unittest.TestCase):
         symbol = "600016.SH"
         expected = "600016"
         standardized = self.gateway.standardize_symbol(symbol)
-        self.assertEqual(standardized, expected, f"Failed for symbol: {symbol}")
+        self.assertEqual(standardized, expected,
+                         f"Failed for symbol: {symbol}")
 
     def test_standardize_symbol_without_dot(self):
         """ 测试symbol中不含有点的情况 """
         symbol = "600016"
         expected = "600016"
         standardized = self.gateway.standardize_symbol(symbol)
-        self.assertEqual(standardized, expected, f"Failed for symbol: {symbol}")
+        self.assertEqual(standardized, expected,
+                         f"Failed for symbol: {symbol}")
 
     def test_standardize_symbol_with_invalid_format(self):
         """ 测试symbol格式不正确的情况 """
         symbol = "SH600016"
         expected = "SH600016"
         standardized = self.gateway.standardize_symbol(symbol)
-        self.assertEqual(standardized, expected, f"Failed for symbol: {symbol}")
+        self.assertEqual(standardized, expected,
+                         f"Failed for symbol: {symbol}")
 
 
 class TestAKGatewayJudgeStockExchange(unittest.TestCase):
     """ 测试 根据A股股票代码判断其所属的交易所和板块 """
 
     def setUp(self) -> None:
-        self.gw = get_ak_gateway()
+        self.ak_gw = get_ak_gateway()
         return super().setUp()
 
     def test_valid_shanghai_stock(self):
         """ 测试上海证券交易所主板股票 """
-        self.assertEqual(self.gw.judge_stock_exchange('600000'), ('SH', '主板'))
+        self.assertEqual(self.ak_gw.judge_stock_exchange('600000'), ('SH', '主板'))
 
     def test_valid_shanghai_tech_board_stock(self):
         """ 测试上海证券交易所科创板股票 """
-        self.assertEqual(self.gw.judge_stock_exchange('688000'), ('SH', '科创板'))
+        self.assertEqual(self.ak_gw.judge_stock_exchange('688000'), ('SH', '科创板'))
 
     def test_valid_shenzhen_main_board_stock(self):
         """ 测试深圳证券交易所主板/中小板股票 """
-        self.assertEqual(self.gw.judge_stock_exchange('000001'), ('SZ', '主板/中小板'))
+        self.assertEqual(self.ak_gw.judge_stock_exchange(
+            '000001'), ('SZ', '主板/中小板'))
 
     def test_valid_shenzhen_chi_next_stock(self):
         """ 测试深圳证券交易所创业板股票 """
-        self.assertEqual(self.gw.judge_stock_exchange('300001'), ('SZ', '创业板'))
+        self.assertEqual(self.ak_gw.judge_stock_exchange('300001'), ('SZ', '创业板'))
 
     def test_valid_beijing_old_third_board_stock(self):
         """ 测试北京证券交易所老三板股票 """
-        self.assertEqual(self.gw.judge_stock_exchange('400001'), ('BJ', '老三板'))
+        self.assertEqual(self.ak_gw.judge_stock_exchange('400001'), ('BJ', '老三板'))
 
     def test_valid_beijing_new_third_board_stock(self):
         """ 测试北京证券交易所新三板股票 """
-        self.assertEqual(self.gw.judge_stock_exchange('430001'), ('BJ', '新三板'))
-        self.assertEqual(self.gw.judge_stock_exchange('830001'), ('BJ', '新三板'))
+        self.assertEqual(self.ak_gw.judge_stock_exchange('430001'), ('BJ', '新三板'))
+        self.assertEqual(self.ak_gw.judge_stock_exchange('830001'), ('BJ', '新三板'))
 
     def test_invalid_stock_code_length(self):
         """ 测试股票代码长度不足6位的无效情况 """
-        self.assertEqual(self.gw.judge_stock_exchange('600'), ('无效的股票代码', ''))
+        self.assertEqual(self.ak_gw.judge_stock_exchange('600'), ('无效的股票代码', ''))
 
     def test_invalid_stock_code_format(self):
         """ 测试股票代码格式错误的无效情况 """
-        self.assertEqual(self.gw.judge_stock_exchange('600A00'), ('无效的股票代码', ''))
+        self.assertEqual(self.ak_gw.judge_stock_exchange(
+            '600A00'), ('无效的股票代码', ''))
 
     def test_invalid_stock_code_non_numeric(self):
         """ 测试股票代码包含非数字字符的无效情况 """
-        self.assertEqual(self.gw.judge_stock_exchange('60000A'), ('无效的股票代码', ''))
+        self.assertEqual(self.ak_gw.judge_stock_exchange(
+            '60000A'), ('无效的股票代码', ''))
 
 
 if __name__ == "__main__":
