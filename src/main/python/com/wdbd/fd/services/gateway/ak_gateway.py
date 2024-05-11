@@ -190,9 +190,9 @@ class AkshareGateWay(AbstarctAkshareGateWay):
     def _init_log_gw(self):
         """ 加载专用日志管理器 """
         if ENVIRONMENT == 'test':
-            config_file_path = r"src\\test\\config\\gw\\akshare.conf"
+            config_file_path = r"src/test/config/gw/akshare.conf"
         else:
-            config_file_path = r"src\\main\\config\\gw\\akshare.conf"
+            config_file_path = r"src/main/config/gw/akshare.conf"
         logging.config.fileConfig(config_file_path, disable_existing_loggers=False)
         return logging.getLogger('akshare')
 

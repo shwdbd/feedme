@@ -10,7 +10,7 @@
 '''
 from abc import ABC, abstractmethod
 import importlib
-from com.wdbd.fd.common.tl import get_action_logger, Result
+from com.wdbd.fd.common.tl import get_action_logger, Result, get_logger
 from loguru import logger
 import sys
 
@@ -212,11 +212,13 @@ class AbstractAction(ABC):
     def set_action_parameters(self, action_cfg: ActionConfig) -> None:
         # 赋值Action配置参数传入
         self.name = action_cfg.name
-        self.log = get_action_logger(action_name=self.name)
+        # self.log = get_action_logger(action_name=self.name)
+        self.log = get_logger()
         self.parameters = action_cfg.parameters
         self.p = self.parameters
         # 再绑定一次logger
-        self.log = logger.bind(action_name=self.name)   # 参数绑定
+        # self.log = logger.bind(action_name=self.name)   # 参数绑定
+        self.log = get_logger()
 
     @abstractmethod
     def check_environment(self) -> Result:
