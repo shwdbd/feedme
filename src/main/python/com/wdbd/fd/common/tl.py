@@ -71,7 +71,7 @@ def get_logger():
         config_file_path = os.path.join(Path().cwd(), "src/main/config/fd_log.conf")
 
     # 确保配置文件存在
-    if not config_file_path.exists():
+    if not os.path.exists(config_file_path):
         raise FileNotFoundError(f"日志文件配置 {config_file_path} 不存在")
 
     logging.config.fileConfig(config_file_path, disable_existing_loggers=False)

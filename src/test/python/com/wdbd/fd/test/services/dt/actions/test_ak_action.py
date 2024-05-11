@@ -1,15 +1,26 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+'''
+@File    :   test_ak_action.py
+@Time    :   2024/05/11 16:07:01
+@Author  :   Jeffrey Wang
+@Version :   1.0
+@Contact :   shwangjj@163.com
+@Desc    :   单元测试
+'''
+import os
 import unittest
-import pandas as pd
 from unittest.mock import patch, MagicMock
+import pandas as pd
 from com.wdbd.fd.services.dt.actions.akshare_action import AkSSESummaryDataDownloader, AkStockInfoShNameCode, AkStockCalDownloader, AkStockInfoBjNameCode, AkStockInfoSzNameCode, AkshareStockList
 from com.wdbd.fd.common.tl import Result
 from com.wdbd.fd.common.db_utils import DbUtils
-import os
 
 
-class Test_Ak_SSE_Summary(unittest.TestCase):
+class TestAkSSESummary(unittest.TestCase):
     """ 测试 Ak_SSE_Summary """
 
+    # FIXME 要接入测试数据库
     def test_handle(self):
         """ 测试从真实网络API调用 """
         # 模拟网关gw
@@ -100,7 +111,7 @@ class Test_Ak_SSE_Summary(unittest.TestCase):
         assert transformed_data.loc[0, 'trade_date'] == '2023-03-31'
 
     def test_data_transformed_with_empty_data(self):
-        # 创建空的DataFrame输入
+        """ 测试空的DataFrame输入情况 """
         empty_data = pd.DataFrame()
 
         with self.assertRaises(TypeError):
@@ -109,6 +120,7 @@ class Test_Ak_SSE_Summary(unittest.TestCase):
             action.transform_data(empty_data)
 
     def test_data_transformed_with_invalid_dataframe(self):
+        """ 测试 data_transformed 输入数据异常的情况s """
         # 创建非DataFrame输入
         invalid_data = []
 
@@ -119,6 +131,7 @@ class Test_Ak_SSE_Summary(unittest.TestCase):
             action.transform_data(invalid_data)
 
     def test_data_transformed_with_missing_columns(self):
+        """ 测试 transformed 输入缺少必要列的情况 """
         # 创建缺少必要列的DataFrame输入
         missing_columns_data = pd.DataFrame({
             '缺失列': [1, 2, 3]
@@ -131,6 +144,7 @@ class Test_Ak_SSE_Summary(unittest.TestCase):
             action.transform_data(missing_columns_data)
 
     def test_load_data_success(self):
+        """ 测试 load_data 成功情况 """
         action = AkSSESummaryDataDownloader()
         # 模拟的原始数据
         raw_data = {
@@ -150,7 +164,7 @@ class Test_Ak_SSE_Summary(unittest.TestCase):
         self.assertEqual(result.msg, "")
 
 
-class Test_Ak_Stock_Cal(unittest.TestCase):
+class TestAkStockCal(unittest.TestCase):
     """ 测试 Ak_Stock_Cal """
 
     # def tearDown(self) -> None:
@@ -184,14 +198,15 @@ class Test_Ak_Stock_Cal(unittest.TestCase):
             table_name="ods_akshare_tool_trade_date_hist_sina"))
 
 
-# 测试 下载上海交易所股票代码清单
-class Test_AkStockInfoShNameCode(unittest.TestCase):
+class TestAkStockInfoShNameCode(unittest.TestCase):
+    """ 测试 下载上海交易所股票代码清单 """
 
     def setUp(self):
         # 创建测试用例
         self.mock_file_dir = "src/test/python/com/wdbd/fd/test/services/dt/actions/ak_test_data_files/"
 
     def test_handle(self):
+        """ 测试 handle 方法 """
         mock_df_1 = pd.DataFrame({
             "证券代码": [600000, 600004],
             "证券简称": ['浦发银行', '白云机场'],
@@ -228,6 +243,7 @@ class Test_AkStockInfoShNameCode(unittest.TestCase):
             table_name="ods_akshare_stock_info_sh_name_code"))
 
     def test_extract_data(self):
+        """ 测试 extract_data 方法 """
         # 在这里，我们假设gw是一个已经实例化的对象，并且有一个call方法
         mock_file_path = os.path.join(
             self.mock_file_dir, "akshare_stock_list_sh.csv")
@@ -277,9 +293,11 @@ class Test_AkStockInfoShNameCode(unittest.TestCase):
 
 
 # 测试 下载北京交易所股票代码清单
-class Test_AkStockInfoBjNameCode(unittest.TestCase):
+class TestAkStockInfoBjNameCode(unittest.TestCase):
+    """ 测试 下载北京交易所股票代码清单 """
 
     def test_handle(self):
+        """ 测试 handle 方法 """
         mock_df = pd.DataFrame({
             "证券代码": [600000, 600004],
             "证券简称": ['浦发银行', '白云机场'],
@@ -308,9 +326,11 @@ class Test_AkStockInfoBjNameCode(unittest.TestCase):
 
 
 # 测试 下载深圳交易所股票代码清单
-class Test_AkStockInfoSzNameCode(unittest.TestCase):
+class TestAkStockInfoSzNameCode(unittest.TestCase):
+    """ 测试 下载深圳交易所股票代码清单 """
 
     def test_handle(self):
+        """ 测试 handle 方法 """
         # mock_df = pd.DataFrame({
         #     "证券代码": [600000, 600004],
         #     "证券简称": ['浦发银行', '白云机场'],
@@ -340,9 +360,11 @@ class Test_AkStockInfoSzNameCode(unittest.TestCase):
         # TODO 需要使用Mock进行测试
 
 
-class Test_AkshareStockList(unittest.TestCase):
+class TestAkshareStockList(unittest.TestCase):
+    """ 测试 下载深圳交易所股票代码清单 """
 
     def test_handle(self):
+        """ 测试 handle 方法 """
         # mock_df = pd.DataFrame({
         #     "证券代码": [600000, 600004],
         #     "证券简称": ['浦发银行', '白云机场'],

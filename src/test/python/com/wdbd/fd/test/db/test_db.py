@@ -9,18 +9,18 @@
 @Desc    :   测试数据库功能
 '''
 import unittest
-import com.wdbd.fd.common.tl as tl
-import com.wdbd.fd.model.db as db
-# from com.wdbd.fd.collector.server import DTServer
-# from sqlalchemy import desc
+from com.wdbd.fd.common import tl
+from com.wdbd.fd.model.db import get_engine
 
 
 # 测试数据库连接
 class TestDbConnect(unittest.TestCase):
+    """ 数据库连接测试 """
+
 
     def test_get_engine(self):
         """ 测试取得数据库引擎 """
         tl.ENVIRONMENT = 'test'
-        engine = db.get_engine()
-        print(engine.url)
+        engine = get_engine()
+        # print(engine.url)
         self.assertTrue("fd_test" in engine.url)

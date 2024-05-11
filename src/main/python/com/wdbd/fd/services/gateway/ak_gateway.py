@@ -8,18 +8,18 @@
 @Contact :   shwangjj@163.com
 @Desc    :   Akshare数据网关
 '''
-from abc import ABC, abstractmethod
-from com.wdbd.fd.common.tl import ENVIRONMENT as ENVIRONMENT, d2viewstr
-import logging.config
-from com.wdbd.fd.services.gateway import DataException
-import requests
 import socket
+import logging.config
+from abc import ABC, abstractmethod
+import requests
+from com.wdbd.fd.common.tl import ENVIRONMENT, d2viewstr
+from com.wdbd.fd.services.gateway import DataException
 
 
 class AkshareGateWayError(Exception):
     """自定义的AkshareGateWay错误类"""
 
-    def __init__(self, message="Akshare 网关错误", code=0, *args, **kwargs):
+    def __init__(self, message="Akshare 网关错误", code=0):
         """
         初始化异常类实例
         Args:
@@ -30,6 +30,7 @@ class AkshareGateWayError(Exception):
         Returns:
             None
         """
+        self.message = message
         super().__init__(message)
         self.code = code
 
@@ -56,22 +57,42 @@ def get_ak_gateway():
     Raises:
         AkshareGateWayError: 如果无法创建AkshareGateWay对象，将抛出此错误。
     """
+    # # 采用单例模式
+    # try:
+    #     if not hasattr(get_ak_gateway, "_instance"):
+    #         get_ak_gateway._instance = AkshareGateWay()
+    #     return get_ak_gateway._instance
+    # except Exception as e:
+    #     # 自定义异常处理，提供更友好的错误信息
+    #     error_message = f"无法创建AkshareGateWay对象: {str(e)}"
+    #     raise AkshareGateWayError(error_message)
     # 采用单例模式
+    _instance = "__instance"
     try:
-        if not hasattr(get_ak_gateway, "_instance"):
-            get_ak_gateway._instance = AkshareGateWay()
-        return get_ak_gateway._instance
+        if not hasattr(get_ak_gateway, _instance):
+            setattr(get_ak_gateway, _instance, AkshareGateWay())
+        return getattr(get_ak_gateway, _instance)
     except Exception as e:
         # 自定义异常处理，提供更友好的错误信息
         error_message = f"无法创建AkshareGateWay对象: {str(e)}"
-        raise AkshareGateWayError(error_message)
+        raise AkshareGateWayError(error_message) from e
 
 
 class AbstarctAkshareGateWay(ABC):
+    """ 抽象Akshare网关类 """    
 
     @abstractmethod
     def symbol_2_tscode(self, symbol) -> str:
-        pass
+        """
+        将股票代码从sh600016格式转换为600016.SH格式。
+        
+        Args:
+            symbol (str): 待转换的股票代码，格式为sh600016。
+        
+        Returns:
+            str: 转换后的股票代码，格式为600016.SH。
+        
+        """
 
 
 class AkshareGateWay(AbstarctAkshareGateWay):
@@ -82,7 +103,7 @@ class AkshareGateWay(AbstarctAkshareGateWay):
     def __init__(self):
         self.gw_logger = self._init_log_gw()     # 加载专用日志
 
-    def _standardize_symbol(self, symbol: str) -> str:
+    def standardize_symbol(self, symbol: str) -> str:
         """
         标准化资产ID字符串。
 
@@ -118,7 +139,7 @@ class AkshareGateWay(AbstarctAkshareGateWay):
         """
         # 入参校验
         if "symbol" in kargs:
-            kargs['symbol'] = self._standardize_symbol(kargs['symbol'])
+            kargs['symbol'] = self.standardize_symbol(kargs['symbol'])
         elif "start_date" in kargs:
             kargs['start_date'] = self._standardize_date(kargs['start_date'])
         elif "end_date" in kargs:
@@ -128,12 +149,12 @@ class AkshareGateWay(AbstarctAkshareGateWay):
             df = callback(*args, **kargs)
             # 登记API日志
             # 入参控制，日期型号，统一成 yyyy-MM-dd
-            self.gw_logger.debug("接口={api_name}, 参数[{p}], 结果= SUCCESS".format(api_name=callback.__name__, p=str(kargs)))
+            self.gw_logger.debug("接口=%s, 参数[%s], 结果= SUCCESS", callback.__name__, str(kargs))
             # 数据清洗(无)
             return df
         except Exception as err:
-            self.gw_logger.error("接口={api_name}, 参数[{p}], 结果= FAILED".format(api_name=callback.__name__, p=str(kargs)))
-            raise DataException(message="Akshare访问异常, {0}".format(str(err)))
+            self.gw_logger.error("接口=%s, 参数[%s], 结果= FAILED", callback.__name__, str(kargs))
+            raise DataException(message=f"Akshare访问异常, {err}") from err
 
     def _symbol_2_default(self, symbol: str) -> str:
         """将sh600016格式转为600016.SH格式
@@ -144,51 +165,105 @@ class AkshareGateWay(AbstarctAkshareGateWay):
         Returns:
             str: 600016格式的资产编号
         """
-        if not symbol or len(symbol) < 8:
-            return symbol
+        # if not symbol or len(symbol) < 8:
+        #     return symbol
 
-        return "{s}.{exchange}".format(s=symbol[2:], exchange=symbol[:2].upper())
+        # return "{s}.{exchange}".format(s=symbol[2:], exchange=symbol[:2].upper())
+        if not symbol or len(symbol) < 8:
+            raise ValueError("股票代码格式不正确，应至少包含8个字符")
+
+        exchange_prefix = symbol[:2].lower()
+        if exchange_prefix not in {'sh', 'sz'}:
+            raise ValueError("股票代码的交易所前缀不正确，应为'sh'或'sz'")
+
+        stock_code = symbol[2:]
+        if not stock_code.isdigit() or len(stock_code) != 6:
+            raise ValueError("股票代码部分应只包含6位数字")
+
+        return f"{stock_code}.{exchange_prefix.upper()}"
 
     def symbol_2_tscode(self, symbol) -> str:
-        """将sh600016格式转为600016.SH格式
-
+        """
+        将股票代码从sh600016格式转换为600016.SH格式。
+        
         Args:
-            symbol (_type_): _description_
-
+            symbol (str): 待转换的股票代码，格式为sh600016。
+        
         Returns:
-            str: _description_
+            str: 转换后的股票代码，格式为600016.SH。
+        
         """
         if not symbol or len(symbol) < 8:
+            print("股票代码格式不正确，应至少包含8个字符")
             return symbol
 
-        return "{s}.{exchange}".format(s=symbol[2:], exchange=symbol[:2].upper())
+        exchange_prefix = symbol[:2]
+        if exchange_prefix.lower() not in {'sh', 'sz'}:
+            raise ValueError("股票代码的交易所前缀不正确，应为'sh'或'sz'")
+
+        stock_code = symbol[2:]
+        if not stock_code.isdigit() or len(stock_code) != 6:
+            raise ValueError("股票代码部分应只包含6位数字")
+
+        return f"{stock_code}.{exchange_prefix.upper()}"
 
     def symbol_exchange_2_tscode(self, symbol, exchange) -> str:
-        """ 600016 变为 600016.SH """
-        # try:
-        #     if not symbol.isdigit() or len(symbol) != 6:
-        #         return symbol
-        #     if not exchange.isalpha() or len(exchange) != 2:
-        #         return symbol
-        #     return f"{symbol}.{exchange}"
-        # except Exception:
-        #     return symbol
+        """
+        将股票代码与交易所信息拼接成完整的股票代码（包括后缀）。
+        
+        Args:
+            symbol (str): 股票代码，如 "600016"。
+            exchange (str): 交易所信息，如 "SH"。
+        
+        Returns:
+            str: 拼接后的完整股票代码，格式为 "{股票代码}.{交易所}"，如 "600016.SH"。
+        
+        """
+        # 添加输入验证
+        if not isinstance(symbol, str) or not symbol.isdigit() or len(symbol) != 6:
+            return symbol  # 或者可以抛出异常或返回特殊值以指示错误
+        if not isinstance(exchange, str) or not exchange.isalpha() or len(exchange) != 2:
+            return symbol  # 或者可以抛出异常或返回特殊值以指示错误
+
+        # 拼接股票代码和交易所信息
         return f"{symbol}.{exchange}"
 
     def tscode_2_symbol(self, tscode: str) -> str:
-        """ 600016.SH 变为 600016 """
-        try:
-            if not tscode or len(tscode) < 9:
-                return tscode
-            else:
-                return tscode[:6]
-        except Exception:
-            print("err")
+        """
+        将股票交易代码转换为股票代码。
+        
+        Args:
+            tscode (str): 股票交易代码，格式为“六位数字.交易所后缀”。
+        
+        Returns:
+            str: 股票代码，格式为“六位数字”。
+        
+        """
+        # try:
+        #     if not tscode or len(tscode) < 9:
+        #         return tscode
+        #     else:
+        #         return tscode[:6]
+        # except Exception as e:
+        #     print(f"转换失败，tscode={tscode}, err = {e}")
+        #     return tscode
+        if not tscode or len(tscode) < 9:
             return tscode
+        else:
+            return tscode[:6]
 
     # 加载专用日志管理器
     def _init_log_gw(self):
-        """ 加载专用日志管理器 """
+        """
+        初始化日志管理器。
+        
+        Args:
+            无参数。
+        
+        Returns:
+            返回 `logging.Logger` 类型的对象，表示名为 'akshare' 的日志记录器。
+        
+        """
         if ENVIRONMENT == 'test':
             config_file_path = r"src/test/config/gw/akshare.conf"
         else:
@@ -251,4 +326,3 @@ class AkshareGateWay(AbstarctAkshareGateWay):
                 board = "新三板"
 
         return exchange, board
-

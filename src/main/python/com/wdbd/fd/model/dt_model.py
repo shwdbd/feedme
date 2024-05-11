@@ -8,11 +8,12 @@
 @Contact :   shwangjj@163.com
 @Desc    :   数据处理 模型
 '''
+import sys
 from abc import ABC, abstractmethod
 import importlib
-from com.wdbd.fd.common.tl import get_action_logger, Result, get_logger
+from com.wdbd.fd.common.tl import Result, get_logger
 from loguru import logger
-import sys
+
 
 SERVER_STAUTS_SHUNDOWN = "SHUNDOWN"     # 已关闭
 
@@ -195,8 +196,9 @@ class AbstractAction(ABC):
         self.name = None        # Action名
         # 设置专用的Action日志器
         self.init_action_logger(self.name)
+        self.log = None
 
-    def init_action_logger(self, name):
+    def init_action_logger(self, name: str = ""):
         """ 初始化Action日志 """
         # TODO 此处参数，需要迁移到配置文件中处理
         global HAS_ACTION_LOGGER
@@ -210,7 +212,7 @@ class AbstractAction(ABC):
         self.log = logger.bind(action_name=self.name)   # 参数绑定
 
     def set_action_parameters(self, action_cfg: ActionConfig) -> None:
-        # 赋值Action配置参数传入
+        """ 赋值Action配置参数传入 """
         self.name = action_cfg.name
         # self.log = get_action_logger(action_name=self.name)
         self.log = get_logger()
@@ -237,7 +239,7 @@ class AbstractAction(ABC):
         Returns:
             bool: 执行结果
         """
-        pass
+        # pass
 
     @abstractmethod
     def rollback(self) -> Result:
@@ -247,11 +249,3 @@ class AbstractAction(ABC):
             bool: 回滚操作执行结果
         """
         return True
-
-
-# if __name__ == "__main__":
-#     # 实例化 Action
-#     action = AbstractAction()
-#     # Action赋值
-#     cfg = ActionConfig()
-#     action.set_action_parameters(cfg)
