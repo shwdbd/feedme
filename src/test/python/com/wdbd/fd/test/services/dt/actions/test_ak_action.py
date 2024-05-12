@@ -83,11 +83,11 @@ class TestAkSSESummary(unittest.TestCase):
             '数值': [10000, 2000000, 15, 4000, 5000, 1500000, 25000, '2023-03-31']
         }
         # 将模拟数据转换为DataFrame
-        df = pd.DataFrame(raw_data)
+        mock_df = pd.DataFrame(raw_data)
 
         # 执行测试
         action = AkSSESummaryDataDownloader()
-        transformed_data = action.transform_data(df)
+        transformed_data = action.transform_data(mock_df)
 
         # 检查数据是否为DataFrame
         assert isinstance(transformed_data, pd.DataFrame)
