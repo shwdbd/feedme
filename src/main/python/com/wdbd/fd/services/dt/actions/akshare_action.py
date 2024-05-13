@@ -361,7 +361,7 @@ class AkStockCalDownloader(AkshareLoadAction):
 
         # 计算所需要的
         year_to_down = self._get_year_to_down()
-        self.log.debug(f"year_to_down = {year_to_down}")
+        self.log.debug(f"year_to_down={year_to_down}")
 
         try:
             # 提取数据
@@ -454,13 +454,13 @@ class AkStockInfoShNameCode(AkshareLoadAction):
         data["上市日期"] = data["上市日期"].apply(tl.d2dbstr)
 
         data["证券代码"] = data["证券代码"].apply(lambda x: self.gw.symbol_exchange_2_tscode(x, exchange="SH"))
-        COLUMN_NAMES_MAPPING = {
+        column_names_mapping = {
             '证券代码': 'symbol',
             '证券简称': 'stock_name',
             '公司全称': 'total_name',
             '上市日期': 'ipo_date',
         }
-        data = data.rename(columns=COLUMN_NAMES_MAPPING)
+        data = data.rename(columns=column_names_mapping)
         return data
 
     def load_data(self, data: pd.DataFrame) -> tl.Result:
@@ -542,7 +542,7 @@ class AkStockInfoBjNameCode(AkshareLoadAction):
     def transform_data(self, data: pd.DataFrame) -> pd.DataFrame:
         """ 清洗 北京交易所 股票清单原始数据 """
         data = data.astype({'上市日期': str, "报告日期": str, "证券代码": str}) 
-        COLUMN_NAMES_MAPPING = {
+        column_names_mapping = {
             '证券代码': 'symbol',
             '证券简称': 'stock_name',
             '总股本': 'zgb',
@@ -556,7 +556,7 @@ class AkStockInfoBjNameCode(AkshareLoadAction):
         data["报告日期"] = data["报告日期"].apply(tl.d2dbstr)
         data["证券代码"] = data["证券代码"].apply(
             self.gw.symbol_exchange_2_tscode, exchange="BJ")
-        data = data.rename(columns=COLUMN_NAMES_MAPPING)
+        data = data.rename(columns=column_names_mapping)
         try:
             data["zgb"] = data["zgb"].str.replace(",", "")
             data["tlgb"] = data["tlgb"].str.replace(",", "")
@@ -696,7 +696,7 @@ class AkStockInfoSzNameCode(AkshareLoadAction):
         """ 清洗 深圳交易所（A股） 股票清单原始数据 """
         data["stock_type"] = "A股"
         data = data.astype({'A股代码': str, "A股上市日期": str})
-        COLUMN_NAMES_MAPPING = {
+        column_names_mapping = {
             'A股代码': 'symbol',
             'A股简称': 'stock_name',
             'A股上市日期': 'ipo_date',
@@ -705,14 +705,14 @@ class AkStockInfoSzNameCode(AkshareLoadAction):
             '所属行业': 'sshy',
             '板块': 'board',
         }
-        data = data.rename(columns=COLUMN_NAMES_MAPPING)
+        data = data.rename(columns=column_names_mapping)
         return data
 
     def transform_data_b(self, data: pd.DataFrame) -> pd.DataFrame:
         """ 清洗 深圳交易所（B股） 股票清单原始数据 """
         data["stock_type"] = "B股"
         data = data.astype({'B股代码': str, "B股上市日期": str})
-        COLUMN_NAMES_MAPPING = {
+        column_names_mapping = {
             'B股代码': 'symbol',
             'B股简称': 'stock_name',
             'B股上市日期': 'ipo_date',
@@ -721,7 +721,7 @@ class AkStockInfoSzNameCode(AkshareLoadAction):
             '所属行业': 'sshy',
             '板块': 'board',
         }
-        data = data.rename(columns=COLUMN_NAMES_MAPPING)
+        data = data.rename(columns=column_names_mapping)
         return data
 
     def transform_data_ab(self, data: pd.DataFrame) -> pd.DataFrame:
@@ -732,14 +732,14 @@ class AkStockInfoSzNameCode(AkshareLoadAction):
         data["zgb"] = "0"
         data["tlgb"] = "0"
         data = data.astype({'A股代码': str, "A股上市日期": str})
-        COLUMN_NAMES_MAPPING = {
+        column_names_mapping = {
             'A股代码': 'symbol',
             'A股简称': 'stock_name',
             'A股上市日期': 'ipo_date',
             '所属行业': 'sshy',
             '板块': 'board',
         }
-        data = data.rename(columns=COLUMN_NAMES_MAPPING)
+        data = data.rename(columns=column_names_mapping)
         return data
 
     def load_data(self, data: pd.DataFrame) -> tl.Result:
@@ -776,6 +776,12 @@ class AkStockInfoSzNameCode(AkshareLoadAction):
 class AkshareStockList(AkshareLoadAction):
     """ 根据三个交易所股票清单生成汇总股票清单表 """
 
+    def __init__(self) -> None:
+        super().__init__()
+        if not self.name:
+            self.name = "AK | 合并股票清单"
+            self.log = logger.bind(action_name=self.name)   # 参数绑定
+
     def handle(self) -> tl.Result:
         """ 合并股票清单列表 """
         session = None
@@ -800,12 +806,12 @@ class AkshareStockList(AkshareLoadAction):
 
             self.log.info(msg)
             return Result(True, msg)
-        except (DataException, SQLAlchemyError) as e:
-            msg = "Akshare获取数据异常，" + str(e)
+        except (DataException, SQLAlchemyError) as dse:
+            msg = "Akshare获取数据异常，" + str(dse)
             self.log.error(msg)
             return tl.Result(result=False, msg=msg)
-        except Exception as e:
-            msg = "异常" + str(e)
+        except Exception as err:
+            msg = "异常" + str(err)
             self.log.error(msg)
             return tl.Result(result=False, msg=msg)
         finally:
@@ -937,7 +943,7 @@ class AkStockHistoryData(AkshareLoadAction):
             data["日期"] = data["日期"].apply(tl.d2dbstr)
             # 字段名更新
             data["证券代码"] = data["证券代码"].apply(lambda x: self.gw.symbol_exchange_2_tscode(x, exchange=self.gw.judge_stock_exchange(x)[0]))
-            COLUMN_NAMES_MAPPING = {
+            column_names_mapping = {
                 '证券代码': 'symbol',
                 '日期': 'trade_date',
                 '开盘': 'p_open',
@@ -953,7 +959,7 @@ class AkStockHistoryData(AkshareLoadAction):
                 '数据周期': 'period',
                 '复权模式': 'adjust'
             }
-            data = data.rename(columns=COLUMN_NAMES_MAPPING)
+            data = data.rename(columns=column_names_mapping)
             return data
         except Exception:
             self.log.error(data)
