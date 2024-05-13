@@ -18,6 +18,7 @@ class TestActionGroupRunning(unittest.TestCase):
     """ 测试ActionGroup单个线程的执行流程 """
 
     def setUp(self) -> None:
+        # 清空 group和action的日志表数据
         self.engine = get_engine()
         t_group_log = DB_POOL.get("comm_action_group_log")
         t_action_log = DB_POOL.get("comm_actions_log")
@@ -26,9 +27,6 @@ class TestActionGroupRunning(unittest.TestCase):
             connection.execute(t_action_log.delete())
             connection.commit()
         return super().setUp()
-
-    def tearDown(self) -> None:
-        return super().tearDown()
 
     def test_thead_run(self):
         """ 测试ActionGroup单个线程的执行流程 """
@@ -39,29 +37,33 @@ class TestActionGroupRunning(unittest.TestCase):
         # 模拟新线程
         engine.threads[group.name] = "s"
         # 加载Action
-        action_A = ActionConfig()
-        action_A.name = "动作A"
-        action_A.class_url = "com.wdbd.fd.services.dt.actions.test_actions.DemoActionA"
-        action_A.set_windows([])
-        action_A.set_once_on_day(True)
-        group.append_action(action_A)
-        action_B = ActionConfig()
-        action_B.name = "动作B"
-        action_B.class_url = "com.wdbd.fd.services.dt.actions.test_actions.DemoActionB"
-        action_B.set_windows([])
-        action_B.set_once_on_day(True)
-        group.append_action(action_B)
+        action_a = ActionConfig()
+        action_a.name = "动作A"
+        action_a.class_url = "com.wdbd.fd.services.dt.actions.test_actions.DemoActionA"
+        action_a.set_windows([])
+        action_a.set_once_on_day(True)
+        group.append_action(action_a)
+        action_b = ActionConfig()
+        action_b.name = "动作B"
+        action_b.class_url = "com.wdbd.fd.services.dt.actions.test_actions.DemoActionB"
+        action_b.set_windows([])
+        action_b.set_once_on_day(True)
+        group.append_action(action_b)
         print("测试参数准备完毕！")
 
         # 执行
-        engine._start_group_threads(group=group, _test_mode=True)
+        try:
+            engine.start_group_threads(group=group, _test_mode=True)
+        except Exception as err:
+            self.fail(f"执行异常 {err}")
 
 
 class TestServerUtils(unittest.TestCase):
+    """ 测试ServerUtils """
 
     def test_load_group(self):
         """ 测试 根据配置文件（内容）读取一个Group配置 """
-        context = { 
+        context = {
             "name": "组A",
             "desc": "关于这个组的说明",
             "rules": {
@@ -137,7 +139,7 @@ class TestServerUtils(unittest.TestCase):
         self.assertIsNone(group)    # 因为class错误
 
     def test__is_in_action_windows(self):
-        # 测试 判断当前时间是否在Action的运行窗口内
+        """ 测试 判断当前时间是否在Action的运行窗口内 """
 
         # 在区段内
         self.assertTrue(ServerUtils.is_in_action_windows(windows=[["0900", "0930"], ["1000", "1030"]], _test_time="0913"))

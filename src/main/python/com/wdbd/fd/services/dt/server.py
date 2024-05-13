@@ -56,22 +56,23 @@ class BasicEngine(DTEngine):
         """
         get_logger().info("=" * 20)
         get_logger().info("数据处理服务引擎启动 ... ")
-        get_logger().info("动作组(ActionGroup)数量: {0} 组".format(len(self.groups)))
+        # get_logger().info("动作组(ActionGroup)数量: {0} 组".format(len(self.groups)))
+        get_logger().info("动作组(ActionGroup)数量: %s 组", len(self.groups))
         for idx, group in enumerate(self.groups, start=1):
-            get_logger().info("{idx} | 动作组: ({gourp_name})中Action数量: {count} 组".format(idx=idx, gourp_name=group.name, count=len(group.actions)))
+            get_logger().info("%s | 动作组: (%s)中Action数量: {%s} 组", idx, group.name, len(group.actions))
         get_logger().info("-" * 20)
 
         # 登记服务状态
         res = start_dtserver()
         if not res or res.result is False:
             # 服务无法启动
-            get_logger().error("服务无法启动！" + str(res.msg))
+            get_logger().error("服务无法启动！%s", str(res.msg))
         else:
             # 服务正常启动
             # 为每一个Group新建一个线程
             for group in self.groups:
                 params = {"group": group}
-                t = threading.Thread(target=self._start_group_threads, name=group.name, kwargs=params)
+                t = threading.Thread(target=self.start_group_threads, name=group.name, kwargs=params)
                 self.threads[group.name] = t  # 注册线程
                 t.start()
             get_logger().info("{0}个线程已创建，服务已成功启动！".format(len(self.groups)))
@@ -80,7 +81,7 @@ class BasicEngine(DTEngine):
         return None
 
     # 执行Group线程
-    def _start_group_threads(self, group, _test_mode: bool = False):
+    def start_group_threads(self, group, _test_mode: bool = False):
         """ 执行单个Group进程
 
         Args:
@@ -115,7 +116,8 @@ class BasicEngine(DTEngine):
             # 开始执行本次处理
             log.info("== {T} == ".format(T=LOG_G) + "-"*20)
             log.info("{T}开始执行".format(T=LOG_G))
-            log.info("{T} Actions".format(T=LOG_G))
+            # log.info("{T} Actions".format(T=LOG_G))
+            log.info("%s Actions", LOG_G)
             # 登记Group日志
             group_log_id = log_group(group=group)
             # 记住并返回group的日志id
@@ -266,12 +268,12 @@ class ServerUtils:
             ActionGroup: _description_
         """
         if file_path is None or not os.path.exists(file_path):
-            DEFAULT_CONFIG_DIR = os.path.join(get_config_dir(), "DEFAULT_ACTION_GROUP.json")
-            get_logger().info("默认配置文件: " + DEFAULT_CONFIG_DIR)
-            file_path = DEFAULT_CONFIG_DIR
+            default_config_dir = os.path.join(get_config_dir(), "DEFAULT_ACTION_GROUP.json")
+            get_logger().info("默认配置文件: %s", default_config_dir)
+            file_path = default_config_dir
             # src\main\config\DEFAULT_ACTION_GROUP.json
         else:
-            get_logger().info("Server 配置文件: " + file_path)
+            get_logger().info("Server 配置文件: %s", file_path)
 
         # 文件不存在，直接返回None
         if os.path.exists(file_path) is False:
@@ -341,6 +343,7 @@ class DTServer:
         # TODO 补充实现的文档
         gorups = []
         if type(file_name) == list:
+        # if isinstance(file_name)
             for f in file_name:
                 gorups.append(ServerUtils.load_config_file(f))
         else:

@@ -30,7 +30,7 @@ def run_test_group():
     print("测试参数准备完毕！")
 
     # 执行
-    engine._start_group_threads(group=group, _test_mode=True)
+    engine.start_group_threads(group=group, _test_mode=True)
 
 
 # 运行服务器

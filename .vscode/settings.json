@@ -18,7 +18,7 @@
     "python.linting.flake8Enabled": false,
     "python.linting.enabled": true,
 
-    "pylint.args": ["--disable=W1203,W0511", "--max-line-length=180"],
+    "pylint.args": ["--disable=W1203,W0511,W0718", "--max-line-length=180"],
 
 
     "python.linting.flake8Args": ["--max-line-length=250"],

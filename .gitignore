@@ -139,3 +139,5 @@ cython_debug/
 
 # db数据库
 /db
+docs/.DS_Store
+src/main/python/com/wdbd/fd/.DS_Store
